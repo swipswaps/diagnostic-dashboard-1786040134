@@ -1,0 +1,1883 @@
+=== 1. DATABASES ===
+Database: ./audit_logs/ab_test.db
+  Tables:
+    ab_test_runs                 godot_state_events         
+    alerts_sent                  resource_contention_log    
+    auto_heal_actions            resource_contention_log_old
+    fix_patterns                 rule_compliance            
+    godot_log_entries          
+  Schema (first 30 lines):
+    CREATE TABLE ab_test_runs (
+                    run_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    session_id INTEGER NOT NULL,
+                    ready_time_ms INTEGER,
+                    vol_cs INTEGER,
+                    nvol_cs INTEGER,
+                    outcome TEXT,
+                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+                );
+    CREATE TABLE sqlite_sequence(name,seq);
+    CREATE TABLE IF NOT EXISTS "resource_contention_log_old" (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    session_id INTEGER NOT NULL,
+                    godot_pid INTEGER NOT NULL,
+                    ts INTEGER,
+                    io_wait INTEGER,
+                    vol_cs INTEGER,
+                    nvol_cs INTEGER,
+                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+                );
+    CREATE TABLE resource_contention_log (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            session_id INTEGER NOT NULL,
+                            godot_pid INTEGER NOT NULL,
+                            ts INTEGER,
+                            io_wait INTEGER,
+                            vol_cs INTEGER,
+                            nvol_cs INTEGER,
+                            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                            FOREIGN KEY (session_id) REFERENCES ab_test_runs(session_id)
+Database: ./pipeline_forensics.db
+  Tables:
+    save_png_hits  snapshots      strip_tests  
+  Schema (first 30 lines):
+    CREATE TABLE snapshots(
+        id INTEGER PRIMARY KEY,
+        file_path TEXT NOT NULL,
+        sha256 TEXT NOT NULL,
+        line_count INTEGER NOT NULL,
+        save_png_count INTEGER NOT NULL,
+        created_ts DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE save_png_hits(
+        id INTEGER PRIMARY KEY,
+        file_path TEXT NOT NULL,
+        line_no INTEGER NOT NULL,
+        line_text TEXT NOT NULL,
+        created_ts DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE strip_tests(
+        id INTEGER PRIMARY KEY,
+        before_sha TEXT,
+        after_sha TEXT,
+        before_lines INTEGER,
+        after_lines INTEGER,
+        removed_lines INTEGER,
+        created_ts DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+Database: ./pipeline_audit.db
+  Tables:
+    actions  files  
+  Schema (first 30 lines):
+    CREATE TABLE files (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                path TEXT UNIQUE NOT NULL,
+                status TEXT NOT NULL,        -- 'valid', 'healed', 'failed', 'manual'
+                last_checked TIMESTAMP,
+                heal_attempts INTEGER DEFAULT 0
+            );
+    CREATE TABLE sqlite_sequence(name,seq);
+    CREATE TABLE actions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                file_id INTEGER REFERENCES files(id),
+                action TEXT NOT NULL,        -- 'parse', 'format', 'style', 'regex_patch'
+                timestamp TIMESTAMP,
+                success BOOLEAN,
+                output TEXT,
+                iteration INTEGER
+            );
+Database: ./parac1ute_mutations.db
+  Tables:
+    auto_heal_actions   parse_error_log     rule_compliance   
+    error_fingerprints  repair_attempts     strategy_rewards  
+    known_repairs       repair_rules        tool_audit        
+  Schema (first 30 lines):
+    CREATE TABLE auto_heal_actions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp INTEGER NOT NULL,
+                    file_path TEXT NOT NULL,
+                    tool TEXT NOT NULL,
+                    exit_code INTEGER NOT NULL DEFAULT -1,
+                    stdout TEXT NOT NULL DEFAULT '',
+                    stderr TEXT NOT NULL DEFAULT '',
+                    fix_applied TEXT NOT NULL DEFAULT '',
+                    success INTEGER NOT NULL DEFAULT 0
+                );
+    CREATE TABLE sqlite_sequence(name,seq);
+    CREATE TABLE tool_audit (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp INTEGER NOT NULL,
+                    file_path TEXT NOT NULL,
+                    tool TEXT NOT NULL,
+                    exit_code INTEGER NOT NULL DEFAULT -1,
+                    stdout TEXT NOT NULL DEFAULT '',
+                    stderr TEXT NOT NULL DEFAULT '',
+                    duration_ms INTEGER NOT NULL DEFAULT 0
+                );
+    CREATE TABLE error_fingerprints (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    error_class TEXT NOT NULL,
+                    pattern TEXT NOT NULL UNIQUE,
+                    description TEXT NOT NULL DEFAULT '',
+                    created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000000000)
+                );
+    CREATE TABLE known_repairs (
+Database: ./indent_if_scan.db
+  Tables:
+    errors           rule_compliance
+  Schema (first 30 lines):
+    CREATE TABLE errors (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                file_path TEXT,
+                line_number INTEGER,
+                error_type TEXT,
+                error_message TEXT,
+                scanned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+    CREATE TABLE sqlite_sequence(name,seq);
+    CREATE TABLE rule_compliance (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            script_name TEXT,
+            rule_id TEXT,
+            passed INTEGER,
+            evidence TEXT,
+            logged_at TEXT
+        );
+Database: ./syntax_errors.db
+  Tables:
+    backup_audit       errors             fix_log            project_diffs    
+    cache_clear_log    file_diffs         fixes              repair_strategies
+  Schema (first 30 lines):
+    CREATE TABLE errors (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                file_path TEXT,
+                line_number INTEGER,
+                error_type TEXT,
+                error_message TEXT,
+                scanned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+    CREATE TABLE sqlite_sequence(name,seq);
+    CREATE TABLE fixes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                error_id INTEGER,
+                file_path TEXT,
+                line_number INTEGER,
+                fix_description TEXT,
+                applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+    CREATE TABLE repair_strategies (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                error_pattern TEXT UNIQUE,
+                repair_type TEXT,
+                repair_data TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+    CREATE TABLE fix_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                error_id INTEGER,
+                strategy_id INTEGER,
+                applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+Database: ./fixes.db
+  Tables:
+    errors           files_to_fix     fixes            rule_compliance
+  Schema (first 30 lines):
+    CREATE TABLE errors (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            file_path TEXT,
+            line_number INTEGER,
+            error_type TEXT,
+            error_message TEXT,
+            suggested_fix TEXT,
+            fixed INTEGER DEFAULT 0,
+            original_line TEXT
+        );
+    CREATE TABLE sqlite_sequence(name,seq);
+    CREATE TABLE fixes (
+    				id INTEGER PRIMARY KEY AUTOINCREMENT,
+    				timestamp TEXT NOT NULL,
+    				fix_name TEXT NOT NULL,
+    				file_path TEXT NOT NULL,
+    				original_hash TEXT,
+    				new_hash TEXT,
+    				status TEXT,
+    				dry_run INTEGER DEFAULT 0,
+    				error_context TEXT
+    			, attempt_count INTEGER DEFAULT 0);
+    CREATE TABLE files_to_fix (
+                file_path TEXT,
+                line_number INTEGER,
+                error_text TEXT,
+                status TEXT,
+                attempt_count INTEGER DEFAULT 0,
+                fixed_ts TEXT,
+                PRIMARY KEY (file_path, line_number)
+Database: ./repair.db
+  Tables:
+    errors        fix_patterns  repair_log  
+  Schema (first 30 lines):
+    CREATE TABLE errors (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    file TEXT NOT NULL,
+                    line INTEGER NOT NULL,
+                    message TEXT,
+                    severity TEXT,
+                    rule TEXT,
+                    content_hash TEXT,
+                    fixed INTEGER DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+    CREATE TABLE sqlite_sequence(name,seq);
+    CREATE TABLE repair_log (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    error_id INTEGER,
+                    action TEXT,
+                    details TEXT,
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+    CREATE TABLE fix_patterns (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    rule TEXT NOT NULL,
+                    error_message TEXT NOT NULL,
+                    original_line TEXT NOT NULL,
+                    fixed_line TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(rule, error_message, original_line)
+                );
+Database: ./gd_patterns.db
+  Tables:
+    fix_log          fix_patterns     rule_compliance
+  Schema (first 30 lines):
+    CREATE TABLE fix_patterns (
+                    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                    token         TEXT NOT NULL,
+                    context       TEXT NOT NULL,
+                    transform     TEXT NOT NULL,
+                    sample_before TEXT,
+                    sample_after  TEXT,
+                    confidence    INTEGER DEFAULT 0,
+                    applications  INTEGER DEFAULT 0,
+                    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    last_used_at  TIMESTAMP,
+                    UNIQUE(token, context, transform)
+                );
+    CREATE TABLE sqlite_sequence(name,seq);
+    CREATE TABLE fix_log (
+                    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                    file        TEXT, line INTEGER, token TEXT, context TEXT,
+                    transform   TEXT, before_hash TEXT, after_hash TEXT,
+                    gate        TEXT, ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+    CREATE TABLE rule_compliance (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            script_name TEXT,
+            rule_id TEXT,
+            passed INTEGER,
+            evidence TEXT,
+            logged_at TEXT
+        );
+Database: ./gd_backup_index.db
+  Tables:
+    files  refs 
+  Schema (first 30 lines):
+    CREATE TABLE files (
+                    path TEXT PRIMARY KEY, root TEXT, name TEXT, logical TEXT,
+                    ext TEXT, is_gd INTEGER, sha256 TEXT, size INTEGER, mtime REAL,
+                    parses INTEGER, referenced INTEGER DEFAULT 0, mask_flag TEXT
+                );
+    CREATE TABLE refs (res_path TEXT PRIMARY KEY, logical TEXT);
+Database: ./parachute_mutations.db
+  Tables:
+    applied_fixes               merge_attempts            
+    arm_physics_baseline        missing_function_fixes    
+    arm_rig_audit               mouse_events              
+    asset_validation            omissions                 
+    audit_findings              parse_checks              
+    auto_heal_actions           parse_error_log           
+    autohealactions             parse_errors              
+    blocking_errors_v1          patch_history             
+    code_patterns               pilot_career              
+    component_audit_log         pilot_category_fixes      
+    component_evidence          pilot_ratings             
+    component_health_tests      pipeline_metadata         
+    component_registry          pipeline_runs             
+    component_relationships     pipelineruns              
+    component_status            project_config            
+    control_baseline            ratings                   
+    control_events              remediation_queue         
+    control_info                repair_attempts           
+    debug_capture               repair_evidence           
+    diag_findings               repair_metrics            
+    diagnostic_context          repair_rules              
+    diagnostic_log              replay_api_tests          
+    diagnostic_logs             resource_contention_log   
+    environment_fixes           restore_log               
+    error_fingerprints          rule_compliance           
+    error_patterns              runtime_failures          
+    event_evidence              schema_migrations         
+    events_hardened             screenshots               
+    file_splits                 source_mutations          
+    files_to_fix                source_snapshots          
+    fix_actions                 steering_telemetry        
+    fix_log                     strategy_rewards          
+    fixes                       syntax_errors             
+    flight_controller_recon     syntax_fixes              
+    flight_controller_recon_v2  terrain_upgrades          
+    flights                     test_runs                 
+    function_index              throttle_log              
+    game_state_log              tool_audit                
+    gamification                user_preferences          
+    gd_patch_registry           verbatim_logs             
+    gdeye_diag                  verificationresults       
+    hud_state                   version_features          
+    issues                      visibility_evidence       
+    key_presses                 visibility_test           
+    known_repairs             
+  Schema (first 30 lines):
+    CREATE TABLE source_snapshots (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                file_path TEXT NOT NULL,
+                sha256 TEXT NOT NULL,
+                content TEXT NOT NULL,
+                created_ts DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+    CREATE TABLE sqlite_sequence(name,seq);
+    CREATE TABLE source_mutations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                file_path TEXT NOT NULL,
+                mutation_name TEXT NOT NULL,
+                before_sha256 TEXT NOT NULL,
+                after_sha256 TEXT NOT NULL,
+                success INTEGER NOT NULL,
+                created_ts DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+    CREATE TABLE parse_checks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                file_path TEXT NOT NULL,
+                parser TEXT NOT NULL,
+                return_code INTEGER NOT NULL,
+                output TEXT,
+                created_ts DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+    CREATE TABLE issues (id INTEGER PRIMARY KEY AUTOINCREMENT, created_at TEXT NOT NULL DEFAULT (datetime('now')), symptom TEXT NOT NULL, root_cause TEXT NOT NULL, fix_applied TEXT NOT NULL, verified INTEGER NOT NULL DEFAULT 0);
+    CREATE TABLE screenshots (id INTEGER PRIMARY KEY AUTOINCREMENT, created_at TEXT NOT NULL DEFAULT (datetime('now')), filename TEXT NOT NULL UNIQUE, path TEXT NOT NULL);
+    CREATE TABLE parse_errors (id INTEGER PRIMARY KEY AUTOINCREMENT, created_at TEXT NOT NULL DEFAULT (datetime('now')), script TEXT NOT NULL, error_text TEXT NOT NULL, fix_script TEXT NOT NULL, fix_result TEXT NOT NULL DEFAULT 'pending');
+    CREATE TABLE game_state_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+Database: ./fix_state.db
+  Tables:
+    fixes            history          rule_compliance
+  Schema (first 30 lines):
+    CREATE TABLE fixes (
+                id TEXT PRIMARY KEY,
+                applied INTEGER DEFAULT 0,
+                timestamp TEXT,
+                backup_path TEXT
+            );
+    CREATE TABLE history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TEXT,
+                fix_id TEXT,
+                event TEXT,
+                details TEXT
+            );
+    CREATE TABLE sqlite_sequence(name,seq);
+    CREATE TABLE rule_compliance (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            script_name TEXT,
+            rule_id TEXT,
+            passed INTEGER,
+            evidence TEXT,
+            logged_at TEXT
+        );
+Database: ./parachute_mutations_backup.db
+  Tables:
+    applied_fixes            parse_checks             schema_migrations      
+    asset_validation         parse_error_log          screenshots            
+    auto_heal_actions        parse_errors             source_mutations       
+    autohealactions          pipeline_metadata        source_snapshots       
+    error_fingerprints       pipeline_runs            strategy_rewards       
+    error_patterns           pipelineruns             syntax_errors          
+    file_splits              repair_attempts          syntax_fixes           
+    files_to_fix             repair_evidence          throttle_log           
+    game_state_log           repair_metrics           tool_audit             
+    gd_patch_registry        repair_rules             verbatim_logs          
+    issues                   replay_api_tests         verificationresults    
+    known_repairs            resource_contention_log
+    omissions                runtime_failures       
+  Schema (first 30 lines):
+    CREATE TABLE source_snapshots (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                file_path TEXT NOT NULL,
+                sha256 TEXT NOT NULL,
+                content TEXT NOT NULL,
+                created_ts DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+    CREATE TABLE sqlite_sequence(name,seq);
+    CREATE TABLE source_mutations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                file_path TEXT NOT NULL,
+                mutation_name TEXT NOT NULL,
+                before_sha256 TEXT NOT NULL,
+                after_sha256 TEXT NOT NULL,
+                success INTEGER NOT NULL,
+                created_ts DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+    CREATE TABLE parse_checks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                file_path TEXT NOT NULL,
+                parser TEXT NOT NULL,
+                return_code INTEGER NOT NULL,
+                output TEXT,
+                created_ts DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+    CREATE TABLE issues (id INTEGER PRIMARY KEY AUTOINCREMENT, created_at TEXT NOT NULL DEFAULT (datetime('now')), symptom TEXT NOT NULL, root_cause TEXT NOT NULL, fix_applied TEXT NOT NULL, verified INTEGER NOT NULL DEFAULT 0);
+    CREATE TABLE screenshots (id INTEGER PRIMARY KEY AUTOINCREMENT, created_at TEXT NOT NULL DEFAULT (datetime('now')), filename TEXT NOT NULL UNIQUE, path TEXT NOT NULL);
+    CREATE TABLE parse_errors (id INTEGER PRIMARY KEY AUTOINCREMENT, created_at TEXT NOT NULL DEFAULT (datetime('now')), script TEXT NOT NULL, error_text TEXT NOT NULL, fix_script TEXT NOT NULL, fix_result TEXT NOT NULL DEFAULT 'pending');
+    CREATE TABLE game_state_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+Database: ./repair_log.db
+  Tables:
+    repairs
+  Schema (first 30 lines):
+    CREATE TABLE repairs
+                     (file_path TEXT, success INTEGER, stdout TEXT, stderr TEXT,
+                      iterations INTEGER, final_strategy TEXT);
+Database: ./test_results.db
+  Tables:
+    parser_tests
+  Schema (first 30 lines):
+    CREATE TABLE parser_tests (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            test_name TEXT, test_case TEXT, parse_result INTEGER,
+            semantic_changed INTEGER, error_message TEXT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP);
+    CREATE TABLE sqlite_sequence(name,seq);
+Database: ./code_index.db
+  Tables:
+    files            rule_compliance  symbols        
+  Schema (first 30 lines):
+    CREATE TABLE files (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                path TEXT UNIQUE,
+                sha256 TEXT,
+                mtime REAL,
+                content_preview TEXT
+            );
+    CREATE TABLE sqlite_sequence(name,seq);
+    CREATE TABLE symbols (
+                file_id INTEGER,
+                kind TEXT, -- class, func, var, signal, extends
+                name TEXT,
+                line INTEGER,
+                FOREIGN KEY(file_id) REFERENCES files(id)
+            );
+    CREATE TABLE rule_compliance (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            script_name TEXT,
+            rule_id TEXT,
+            passed INTEGER,
+            evidence TEXT,
+            logged_at TEXT
+        );
+Database: ./tool_coverage.db
+  Tables:
+    bridge_demo  coverage     probes       runs       
+  Schema (first 30 lines):
+    CREATE TABLE runs(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ts TEXT NOT NULL,
+        source_db TEXT NOT NULL);
+    CREATE TABLE sqlite_sequence(name,seq);
+    CREATE TABLE probes(
+        run_id INTEGER NOT NULL,
+        name TEXT NOT NULL, installed INTEGER NOT NULL,
+        which TEXT, probe_argv TEXT, exit_code INTEGER,
+        duration_ms INTEGER, stdout TEXT, stderr TEXT,
+        FOREIGN KEY(run_id) REFERENCES runs(id));
+    CREATE TABLE coverage(
+        run_id INTEGER NOT NULL,
+        name TEXT NOT NULL, family TEXT, installed INTEGER,
+        aha_uses INTEGER, audit_uses INTEGER,
+        variant_total_uses INTEGER, total_uses INTEGER,
+        why_efficacious TEXT,
+        FOREIGN KEY(run_id) REFERENCES runs(id));
+    CREATE TABLE bridge_demo(
+        run_id INTEGER NOT NULL,
+        payload_json TEXT NOT NULL,
+        FOREIGN KEY(run_id) REFERENCES runs(id));
+Database: ./patterns_mined.db
+  Tables:
+    failure_sites   mined_patterns  mining_runs   
+  Schema (first 30 lines):
+    CREATE TABLE mining_runs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            started_at TEXT NOT NULL,
+            project_root TEXT NOT NULL,
+            source_db TEXT NOT NULL,
+            parser TEXT NOT NULL,
+            files_scanned INTEGER, files_working INTEGER, files_failing INTEGER
+        );
+    CREATE TABLE sqlite_sequence(name,seq);
+    CREATE TABLE failure_sites (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            run_id INTEGER NOT NULL,
+            file_path TEXT NOT NULL,
+            line_number INTEGER,
+            error_class TEXT,
+            raw_stderr TEXT,
+            window_before TEXT,
+            window_after TEXT,
+            signature_kw TEXT,
+            signature_indent INTEGER,
+            FOREIGN KEY (run_id) REFERENCES mining_runs(id)
+        );
+    CREATE TABLE mined_patterns (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            failure_site_id INTEGER NOT NULL,
+            source_file TEXT NOT NULL,
+            source_line INTEGER NOT NULL,
+            directory_distance INTEGER NOT NULL,
+            template_text TEXT NOT NULL,
+            dry_run_diff TEXT NOT NULL,
+Database: ./patterns_mined_focused.db
+  Tables:
+    failure_sites   mined_patterns  mining_runs   
+  Schema (first 30 lines):
+    CREATE TABLE mining_runs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            started_at TEXT NOT NULL,
+            project_root TEXT NOT NULL,
+            source_db TEXT NOT NULL,
+            parser TEXT NOT NULL,
+            files_scanned INTEGER, files_working INTEGER, files_failing INTEGER
+        );
+    CREATE TABLE sqlite_sequence(name,seq);
+    CREATE TABLE failure_sites (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            run_id INTEGER NOT NULL,
+            file_path TEXT NOT NULL,
+            line_number INTEGER,
+            error_class TEXT,
+            raw_stderr TEXT,
+            window_before TEXT,
+            window_after TEXT,
+            signature_kw TEXT,
+            signature_indent INTEGER,
+            FOREIGN KEY (run_id) REFERENCES mining_runs(id)
+        );
+    CREATE TABLE mined_patterns (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            failure_site_id INTEGER NOT NULL,
+            source_file TEXT NOT NULL,
+            source_line INTEGER NOT NULL,
+            directory_distance INTEGER NOT NULL,
+            template_text TEXT NOT NULL,
+            dry_run_diff TEXT NOT NULL,
+Database: ./patterns_mined_v2.db
+  Tables:
+    failure_sites   mined_patterns  mining_runs     pending_fixes 
+  Schema (first 30 lines):
+    CREATE TABLE mining_runs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            started_at TEXT NOT NULL,
+            project_root TEXT NOT NULL,
+            source_db TEXT NOT NULL,
+            parser TEXT NOT NULL,
+            files_scanned INTEGER, files_working INTEGER, files_failing INTEGER
+        );
+    CREATE TABLE sqlite_sequence(name,seq);
+    CREATE TABLE failure_sites (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            run_id INTEGER NOT NULL,
+            file_path TEXT NOT NULL,
+            line_number INTEGER,
+            error_class TEXT,
+            raw_stderr TEXT,
+            window_before TEXT,
+            window_after TEXT,
+            signature_kw TEXT,
+            signature_indent INTEGER,
+            FOREIGN KEY (run_id) REFERENCES mining_runs(id)
+        );
+    CREATE TABLE mined_patterns (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            failure_site_id INTEGER NOT NULL,
+            source_file TEXT NOT NULL,
+            source_line INTEGER NOT NULL,
+            directory_distance INTEGER NOT NULL,
+            template_text TEXT NOT NULL,
+            dry_run_diff TEXT NOT NULL,
+=== 2. GDSOURCE FILES (Godot scripts) ===
+File: godot_project/scripts/backups/removed_repair_scripts/fix_forensic_hud.gd
+  Functions that may emit logs:
+File: godot_project/scripts/backups/removed_repair_scripts/fix_forensic_tool.gd
+  Functions that may emit logs:
+    func _ready():
+    	print("🔧 Starting forensic_hud.gd repair...")
+    		printerr("❌ Cannot open file: ", PATH)
+    		print("✅ Removed stray quote line.")
+    		print("ℹ️ No stray quote line found.")
+    		print("✅ Fixed unterminated string by closing with empty string.")
+    		printerr("❌ Expected exactly one occurrence of '", old_pattern, "', found ", count, ". Not fixing automatically.")
+    		print("ℹ️ No changes needed – file is already correct.")
+    		print("📁 Backup created: ", backup_path)
+    		printerr("⚠️ Could not create backup at ", backup_path)
+File: godot_project/scripts/backups/build_terrain.backup.20260607_151124.gd
+  Functions that may emit logs:
+    func _ready():
+    	print("[VERBATIM] ", Time.get_datetime_string_from_system(), " ENTER _ready gate=none")
+    		print("[VERBATIM] ERROR: heightmap_512.raw not found")
+    		print("[VERBATIM] Baked colours loaded: ", _baked.size())
+    		print("[VERBATIM] BAKE FALLBACK")
+    	print("[VERBATIM] Terrain created: ", verts.size(), " vertices")
+    	print("[VERBATIM] Runways added")
+    	print("[VERBATIM] Camera attached")
+    	print("[VERBATIM] Drop zone created")
+    	print("[VERBATIM] HUD created")
+File: godot_project/scripts/backups/build_terrain.backup.20260607_151237.gd
+  Functions that may emit logs:
+    func _ready():
+    	print("[VERBATIM] ", Time.get_datetime_string_from_system(), " ENTER _ready gate=none")
+    		print("[VERBATIM] ERROR: heightmap_512.raw not found")
+    		print("[VERBATIM] Baked colours loaded: ", _baked.size())
+    		print("[VERBATIM] BAKE FALLBACK")
+    	print("[VERBATIM] Terrain created: ", verts.size(), " vertices")
+    	print("[VERBATIM] Runways added")
+    	print("[VERBATIM] Camera attached")
+    	print("[VERBATIM] Drop zone created")
+    	print("[VERBATIM] HUD created")
+File: godot_project/scripts/backups/fix_forensic_hud.gd
+  Functions that may emit logs:
+File: godot_project/scripts/AirplaneController.gd
+  Functions that may emit logs:
+    func _ready() -> void:
+    func load_plane(index: int) -> bool:
+    func apply_skin(index: int) -> bool:
+    func _apply_material_recursive(node: Node, mat: Material) -> void:
+    func get_plane() -> Node3D:
+    func set_position(pos: Vector3) -> void:
+    func set_rotation(rot: Vector3) -> void:
+    func get_health() -> Dictionary:
+File: godot_project/scripts/CanopyReplay.gd
+  Functions that may emit logs:
+    func _physics_process(_delta: float) -> void:
+    func _safe_basis_toward(from: Vector3, to: Vector3, up: Vector3 = Vector3.UP) -> Basis:
+File: godot_project/scripts/ComponentRegistry.gd
+  Functions that may emit logs:
+    func register_parachute_controller(node: Node) -> void:
+    func register_altimeter_hud(node: Node) -> void:
+    func register_pip_draggable(node: Node) -> void:
+    func register_character(node: Node) -> void:
+    func register_db_guard(node: Node) -> void:
+    func register_view_pose_controller(node: Node) -> void:
+    func register_airplane_controller(node: Node) -> void:
+    func get_health_report() -> Dictionary:
+File: godot_project/scripts/DatabaseGuard.gd
+  Functions that may emit logs:
+    func _ready() -> void:
+    	print("[VERBATIM] DatabaseGuard.gd _ready() called")
+    		print("[VERBATIM] DatabaseGuard: SqliteDb not found, will retry")
+    	print("[VERBATIM] DatabaseGuard: _ready ok=true")
+    func _exit_tree() -> void:
+    	print("[VERBATIM] DatabaseGuard: _exit_tree called")
+    func execute_query(sql: String, args: Array = []) -> Array:
+    			print("[VERBATIM] DatabaseGuard: circuit HALF_OPEN - testing")
+    			print("[VERBATIM] DatabaseGuard: circuit OPEN - rejecting query")
+    			print("[VERBATIM] DatabaseGuard: query failed, retry %d/%d" % [attempt, max_attempts])
+File: godot_project/scripts/FlightTrack.gd
+  Functions that may emit logs:
+    func add_point(t: float, pos: Vector3, vel: Vector3 = Vector3.ZERO, horiz: bool = true) -> void:
+    func get_state_at_time(t: float) -> Dictionary:
+File: godot_project/scripts/GameIntegrity.gd
+  Functions that may emit logs:
+    func _ready() -> void:
+    func _exit_tree() -> void:
+    func check_and_repair() -> void:
+    func backup_file(res_path: String) -> bool:
+    func restore_latest_backup(res_path: String) -> bool:
+    func _repair_mixed_indentation(content: String) -> String:
+    func _repair_build_terrain(content: String) -> String:
+    func _repair_parachute_controller(content: String) -> String:
+    func _repair_audit_gd(content: String) -> String:
+    func _repair_plane(content: String) -> String:
+File: godot_project/scripts/GameIntegrity_2606150714.gd
+  Functions that may emit logs:
+    func _ready():
+    func _exit_tree() -> void:
+    func check_and_repair() -> void:
+    func backup_file(res_path: String) -> bool:
+    func restore_latest_backup(res_path: String) -> bool:
+    func syntax_check(res_path: String) -> bool:
+    func auto_repair(res_path: String) -> bool:
+    func _repair_mixed_indentation(content: String) -> String:
+    func _repair_build_terrain(content: String) -> String:
+    		+ "            print(\"[VERBATIM] Loading \", path, \" progress: \", _loading_progress)")
+File: godot_project/scripts/HUDManager.gd
+  Functions that may emit logs:
+    func _ready():
+    func register_component(name: String, node: Node):
+    func toggle_visibility(name: String):
+    func set_collapsed(name: String, collapsed: bool):
+    func set_text_selectable(name: String, selectable: bool):
+    func _save_state():
+    func _load_state():
+File: godot_project/scripts/HubManager.gd
+  Functions that may emit logs:
+    func _ready():
+    func _ensure_hub():
+    		print("[HubManager] Hub already running (env) - skipping startup")
+    		print("[HubManager] Hub spawn requested pid=", pid, " non-blocking")
+    		print("[HubManager] Hub spawn failed (create_process returned ", pid, ")")
+File: godot_project/scripts/InputManager.gd
+  Functions that may emit logs:
+    func _ready() -> void:
+    func _input(event: InputEvent) -> void:
+    			print("[INPUT] ui_accept pressed")
+    			print("[INPUT] ui_cancel pressed")
+    			print("[INPUT] restart pressed")
+    	print(Time.get_datetime_string_from_system() + " [INFO] InputManager ready")
+    	print(
+    func _unhandled_input(event) -> void:
+    	# FIX (this session): 7 duplicate prints removed. Their literal
+    	print("[INPUT] unhandled_input triggered")
+File: godot_project/scripts/ResourceThrottle.gd
+  Functions that may emit logs:
+    func _ready() -> void:
+    	print("[VERBATIM] ResourceThrottle.gd _ready() called")
+    	print("[VERBATIM] ResourceThrottle: _ready ok=true")
+    func _ensure_table() -> void:
+    		print("[VERBATIM] ResourceThrottle: SqliteDb not available")
+    	print("[VERBATIM] ResourceThrottle: table ensured")
+    func can_attempt(operation: String) -> bool:
+    		print("[VERBATIM] ResourceThrottle: operation '%s' is locked" % operation)
+    func record_attempt(operation: String, success: bool, error_msg: String = "") -> void:
+    			print("[VERBATIM] ResourceThrottle: operation '%s' LOCKED due to repeated failures" % operation)
+File: godot_project/scripts/SqliteWatchdog.gd
+  Functions that may emit logs:
+    func _ready() -> void:
+    	print("[VERBATIM] SqliteWatchdog.gd _ready() called")
+    	print("[VERBATIM] SqliteWatchdog.gd _ready() called")
+    	print("[VERBATIM] SqliteWatchdog.gd _ready() called")
+    	print("[VERBATIM] Watchdog: _ready started")
+    		print("[VERBATIM] Watchdog: SqliteDb not available; skipping scan.")
+    		print("[VERBATIM] Watchdog: SqliteDb not ready; skipping scan.")
+    	print("[VERBATIM] Watchdog: started, polling user://screenshots/")
+    	print("[VERBATIM] Watchdog: scan disabled — single-launch screenshot mode")
+    	print("[VERBATIM] Watchdog: _ready completed")
+File: godot_project/scripts/StructuredLogger.gd
+  Functions that may emit logs:
+    #       print("[VERBATIM] ...") with structured output queryable by jq.
+    #       falls back to print() only. Logs still visible in Python stdout capture.
+    func _ready() -> void:
+    		print("[StructuredLogger] WARN: OS.get_user_data_dir() returned empty — stdout only")
+    		print("[StructuredLogger] sentry_available=", _sentry_available)
+    		print("[StructuredLogger] log file: ", _log_abs_path)
+    		print("[StructuredLogger] WARN: could not open ", _log_abs_path, " — stdout only")
+    	print("[StructuredLogger] sentry_available=", _sentry_available)
+    func _exit_tree() -> void:
+    func set_context(p_session_id: int, p_run_id: int) -> void:
+File: godot_project/scripts/ViewPoseController.gd
+  Functions that may emit logs:
+    func _ready() -> void:
+    			print("ViewPoseController: camera target set to airplane")
+    		print("ViewPoseController: camera or airplane not found")
+    func get_camera() -> Camera3D:
+    func get_character() -> Node3D:
+    func set_camera_fov(fov: float) -> void:
+    func set_camera_position(pos: Vector3) -> void:
+    func set_character_position(pos: Vector3) -> void:
+    func play_animation(name: String, blend: float = 0.1) -> void:
+    func get_health() -> Dictionary:
+File: godot_project/scripts/audit.gd
+  Functions that may emit logs:
+    func _ready() -> void:
+    		push_warning("Audit: Failed to open log file")
+    func _process(_delta: float) -> void:
+    func log_event(msg: String) -> void:
+    func log_error(msg: String) -> void:
+    	# 4 duplicate prints containing literal "audit.gd:N" text — same
+    	print("[ERROR-LOC] about to call error func")
+    	print("[ERROR-LOC] audit.gd:45 about to call error func")
+    	print("[ERROR-LOC] audit.gd:46 about to call error func")
+    	print("[ERROR-LOC] audit.gd:47 about to call error func")
+File: godot_project/scripts/auto_heal.gd
+  Functions that may emit logs:
+    func _ready() -> void:
+    func apply_indentation_fix() -> void:
+    	print("[AutoHeal] Indentation fix applied." if fix_applied else "[AutoHeal] No fix needed.")
+    func _ensure_db() -> bool:
+    		push_error("Database not found at ", DB_PATH)
+    		push_error("Failed to open database.")
+    func apply_rule(pattern_old: String, pattern_new: String) -> void:
+    func convert_spaces_to_tabs() -> void:
+    func ensure_qe_turn_checks() -> void:
+    func log_autoheal(source: String, action: String, success: bool) -> void:
+File: godot_project/scripts/build_terrain.backup_20260707-205552.gd
+  Functions that may emit logs:
+    func _ready():
+    	print("[INIT] Press SPACE to start")
+    	print("[DIAG] _ready: ENTER")
+    	print("[VERBATIM] ", Time.get_datetime_string_from_system(), " ENTER _ready gate=none")
+    			print("[VERBATIM] Baked colours loaded: ", _baked.size())
+    			print("[VERBATIM] BAKE FALLBACK")
+    		print("[VERBATIM] Terrain created: ", verts.size(), " vertices")
+    		print("[VERBATIM] WARNING: heightmap_512.raw not found – using flat terrain fallback")
+    		print("[VERBATIM] Flat terrain fallback created")
+    	print("[VERBATIM] Runways added")
+File: godot_project/scripts/build_terrain.backup_20260707-210153.gd
+  Functions that may emit logs:
+    func _ready():
+    	print("[INIT] Press SPACE to start")
+    	print("[DIAG] _ready: ENTER")
+    	print("[VERBATIM] ", Time.get_datetime_string_from_system(), " ENTER _ready gate=none")
+    			print("[VERBATIM] Baked colours loaded: ", _baked.size())
+    			print("[VERBATIM] BAKE FALLBACK")
+    		print("[VERBATIM] Terrain created: ", verts.size(), " vertices")
+    		print("[VERBATIM] WARNING: heightmap_512.raw not found – using flat terrain fallback")
+    		print("[VERBATIM] Flat terrain fallback created")
+    	print("[VERBATIM] Runways added")
+File: godot_project/scripts/build_terrain.backup_20260707-210819.gd
+  Functions that may emit logs:
+    func _ready():
+    	print("[INIT] Press SPACE to start")
+    	print("[DIAG] _ready: ENTER")
+    	print("[VERBATIM] ", Time.get_datetime_string_from_system(), " ENTER _ready gate=none")
+    			print("[VERBATIM] Baked colours loaded: ", _baked.size())
+    			print("[VERBATIM] BAKE FALLBACK")
+    		print("[VERBATIM] Terrain created: ", verts.size(), " vertices")
+    		print("[VERBATIM] WARNING: heightmap_512.raw not found – using flat terrain fallback")
+    		print("[VERBATIM] Flat terrain fallback created")
+    	print("[VERBATIM] Runways added")
+File: godot_project/scripts/build_terrain.backup_20260707-215820.gd
+  Functions that may emit logs:
+    func _ready():
+    	print("[INIT] Press SPACE to start")
+    	print("[DIAG] _ready: ENTER")
+    	print("[VERBATIM] ", Time.get_datetime_string_from_system(), " ENTER _ready gate=none")
+    			print("[VERBATIM] Baked colours loaded: ", _baked.size())
+    			print("[VERBATIM] BAKE FALLBACK")
+    		print("[VERBATIM] Terrain created: ", verts.size(), " vertices")
+    		print("[VERBATIM] WARNING: heightmap_512.raw not found – using flat terrain fallback")
+    		print("[VERBATIM] Flat terrain fallback created")
+    	print("[VERBATIM] Runways added")
+File: godot_project/scripts/build_terrain.backup_20260707-222344.gd
+  Functions that may emit logs:
+    func _ready():
+    	print("[INIT] Press SPACE to start")
+    	print("[DIAG] _ready: ENTER")
+    	print("[VERBATIM] ", Time.get_datetime_string_from_system(), " ENTER _ready gate=none")
+    			print("[VERBATIM] Baked colours loaded: ", _baked.size())
+    			print("[VERBATIM] BAKE FALLBACK")
+    		print("[VERBATIM] Terrain created: ", verts.size(), " vertices")
+    		print("[VERBATIM] WARNING: heightmap_512.raw not found – using flat terrain fallback")
+    		print("[VERBATIM] Flat terrain fallback created")
+    	print("[VERBATIM] Runways added")
+File: godot_project/scripts/build_terrain.backup_20260707-222819.gd
+  Functions that may emit logs:
+    func _ready():
+    	print("[INIT] Press SPACE to start")
+    	print("[DIAG] _ready: ENTER")
+    	print("[VERBATIM] ", Time.get_datetime_string_from_system(), " ENTER _ready gate=none")
+    			print("[VERBATIM] Baked colours loaded: ", _baked.size())
+    			print("[VERBATIM] BAKE FALLBACK")
+    		print("[VERBATIM] Terrain created: ", verts.size(), " vertices")
+    		print("[VERBATIM] WARNING: heightmap_512.raw not found – using flat terrain fallback")
+    		print("[VERBATIM] Flat terrain fallback created")
+    	print("[VERBATIM] Runways added")
+File: godot_project/scripts/debug_components.gd
+  Functions that may emit logs:
+    	print("\n===== 3D COMPONENT DEBUG =====\n")
+    		print("ERROR: No current scene")
+    		print("--- Camera ---")
+    		print("  Position: ", camera.global_position)
+    		print(
+    		print("  Current: ", camera.current)
+    		print("  Cull mask: ", camera.cull_mask)
+    		print("ERROR: No camera")
+    		print("\n--- WorldEnvironment ---")
+    		print("  Background mode: ", world_env.environment.background_mode)
+File: godot_project/scripts/draggable_control.gd
+  Functions that may emit logs:
+    #   - OBSERVABILITY: full state printed on each event
+    func _log_result(operation: String, success: bool, detail: String) -> void:
+    	print("[%s] [%s] %s: %s" % [ts, status, operation, detail])
+    func _ready() -> void:
+    func _gui_input(event: InputEvent) -> void:
+    func _handle_mouse_button(event: InputEventMouseButton) -> void:
+    func _handle_mouse_motion(_event: InputEventMouseMotion) -> void:
+File: godot_project/scripts/flight_controller.gd
+  Functions that may emit logs:
+    func setup(parent_node: Node) -> void:
+    func _ready() -> void:
+    	print("[VERBATIM] FlightController _ready")
+    func _process(delta: float) -> void:
+    func _input(event: InputEvent) -> void:
+    	print("[INPUT] flight_controller.gd:36 _input/_unhandled_input triggered")
+    	print("[INPUT] flight_controller.gd:36 _input/_unhandled_input triggered")
+    func _handle_pitch(_delta: float) -> void:
+    func _handle_roll(_delta: float) -> void:
+    func _handle_yaw(_delta: float) -> void:
+=== 3. SHELL SCRIPTS ===
+Script: ./scripts/setup_openfoam_case.sh
+  Head:
+    #!/usr/bin/env bash
+    # PATH: scripts/setup_openfoam_case.sh
+    # WHAT: Generates OpenFOAM case directory from terrain STL and zones JSON
+    # WHY:  Automates CFD setup for each Google Earth location
+    # MENTAL MODEL BEFORE: Manual blockMesh/snappyHexMesh/boundary setup
+    # MENTAL MODEL AFTER:  One command generates complete runnable case
+    # FAILURE MODE: STL or JSON missing → case incomplete
+    # VERIFIES WITH: Case directory created with all required files
+    #
+    # Source (Tier 2): OpenFOAM case structure documented in User Guide section 2.1
+    #   https://www.openfoam.com/documentation/guides/latest/doc/guide-case-file-structure.html
+    
+    set -euo pipefail
+    
+    CASE_NAME="${1:-}"
+  References to logs:
+Script: ./scripts/create_terrain_dae.sh
+  Head:
+    #!/usr/bin/env bash
+    echo "ERROR: Automatic terrain download is not available."
+    echo "Please export a COLLADA (.dae) file manually from Google Earth Pro."
+    echo "Then run this script again and provide the path to that file."
+    exit 1
+  References to logs:
+Script: ./scripts/fix_rule30_stderr.sh
+  Head:
+    #!/bin/bash
+    # PATH: scripts/fix_rule30_stderr.sh
+    # WHAT: Apply the suggested_fix for R_STDERR_SUPPRESSION_ALL to all apply_fixlist_*.sh scripts.
+    # WHY:  Hundreds of 2>&1 occurrences were found; each hides errors.
+    #       This script replaces 2>&1 with 2>&1.
+    # Source (Tier 2): sed(1) – in‑place substitution:
+    #   https://man7.org/linux/man-pages/man1/sed.1.html
+    # Source (Tier 1): Rule 30 from prior sessions.
+    
+    echo "--- Applying Rule 30 fix to apply_fixlist_*.sh ---"
+    
+    BEFORE=$(grep -c '2>&1' apply_fixlist_*.sh 2>&1 | awk -F: '{sum+=$2} END {print sum+0}')
+    echo "[VERBATIM] Before fix: $BEFORE occurrences of 2>&1"
+    
+    find . -name "apply_fixlist_*.sh" -exec sed -i 's/2>\/dev\/null/2>&1/g' {} \;
+  References to logs:
+Script: ./audit_logs/apply_fixlist_0122.sh
+  Head:
+    #!/usr/bin/env bash
+    # apply_fixlist_0122.sh – Complete Parachute CFD Pipeline v122
+    # Safer: explicit error handling, progress markers, guaranteed audit logs.
+    
+    set -uo pipefail   # nounset, pipefail; NO errexit to avoid silent death
+    
+    PROJ_DIR="$(cd "$(dirname "$0")" && pwd)"
+    cd "$PROJ_DIR"
+    
+    # --- Truncation guard ---
+    LINES=$(wc -l < "$0")
+    if [ "$LINES" -lt 600 ]; then
+        echo "FATAL: This script appears truncated (found $LINES lines, expected >= 600)."
+        exit 1
+    fi
+  References to logs:
+    # Safer: explicit error handling, progress markers, guaranteed audit logs.
+            { $solver 2>&1 | stdbuf -oL tee "$log"; } || true
+        blockMesh 2>&1 | tee log.blockMesh || true
+        surfaceFeatureExtract 2>&1 | tee log.surfaceFeatureExtract || true
+        snappyHexMesh -overwrite 2>&1 | tee log.snappyHexMesh || true
+Script: ./audit_logs/apply_fixlist_0123.sh
+  Head:
+    #!/usr/bin/env bash
+    # apply_fixlist_0123.sh – Complete Parachute CFD Pipeline v123
+    # Fixed: OpenFOAM env sourced BEFORE function definitions to avoid name clashes.
+    
+    set -uo pipefail   # nounset, pipefail; NO errexit for robustness
+    
+    PROJ_DIR="$(cd "$(dirname "$0")" && pwd)"
+    cd "$PROJ_DIR"
+    
+    # --- Truncation guard ---
+    LINES=$(wc -l < "$0")
+    if [ "$LINES" -lt 600 ]; then
+        echo "FATAL: This script appears truncated (found $LINES lines, expected >= 600)."
+        exit 1
+    fi
+  References to logs:
+            { $solver 2>&1 | stdbuf -oL tee "$log"; } || true
+        blockMesh 2>&1 | tee log.blockMesh || true
+        surfaceFeatureExtract 2>&1 | tee log.surfaceFeatureExtract || true
+        snappyHexMesh -overwrite 2>&1 | tee log.snappyHexMesh || true
+Script: ./audit_logs/apply_fixlist_0125.sh
+  Head:
+    #!/usr/bin/env bash
+    # apply_fixlist_0125.sh – Complete Parachute CFD Pipeline v125
+    set -uo pipefail
+    PROJ_DIR="$(cd "$(dirname "$0")" && pwd)"
+    cd "$PROJ_DIR"
+    
+    # --- Truncation guard ---
+    LINES=$(wc -l < "$0")
+    if [ "$LINES" -lt 600 ]; then
+        echo "FATAL: This script appears truncated (found $LINES lines, expected >= 600)."
+        exit 1
+    fi
+    
+    # --- Audit log trap: always export logs at exit ---
+    export AUDIT_DONE=0
+  References to logs:
+            { $solver 2>&1 | stdbuf -oL tee "$log"; } || true
+        blockMesh 2>&1 | tee log.blockMesh || true
+        surfaceFeatureExtract 2>&1 | tee log.surfaceFeatureExtract || true
+        snappyHexMesh -overwrite 2>&1 | tee log.snappyHexMesh || true
+Script: ./audit_logs/apply_fixlist_0126.sh
+  Head:
+    #!/usr/bin/env bash
+    # apply_fixlist_0126.sh – Complete Parachute CFD Pipeline v126
+    # All steps from v125 with skip‑audit logging (apply commands included)
+    set -uo pipefail
+    PROJ_DIR="$(cd "$(dirname "$0")" && pwd)"
+    cd "$PROJ_DIR"
+    
+    # --- Truncation guard ---
+    LINES=$(wc -l < "$0")
+    if [ "$LINES" -lt 600 ]; then
+        echo "FATAL: This script appears truncated (found $LINES lines, expected >= 600)."
+        exit 1
+    fi
+    
+    export AUDIT_DONE=0
+  References to logs:
+        ( cd "$case_dir" && { $solver 2>&1 | stdbuf -oL tee "$log"; } || true )
+        "cd \"$CASE_DIR\"; echo '      Running blockMesh...'; blockMesh 2>&1 | tee log.blockMesh || true; echo '      Running surfaceFeatureExtract...'; surfaceFeatureExtract 2>&1 | tee log.surfaceFeatureExtract || true; echo '      Running snappyHexMesh...'; snappyHexMesh -overwrite 2>&1 | tee log.snappyHexMesh || true; cd \"$PROJ_DIR\"; echo '      ✅ Mesh generated'"
+Script: ./audit_logs/apply_fixlist_0138.sh
+  Head:
+    #!/usr/bin/env bash
+    # apply_fixlist_0138.sh – Godot‑only fix list (v138)
+    # Implements all steps from parachute‑fixlist‑v138.json: scene repairs,
+    # camera/sky/FBX setup, terrain conversion, renderer section placement,
+    # altimeter HUD, real‑world canopy constants, logbook entry.
+    # Self‑verifies line count to prevent truncation.
+    
+    set -uo pipefail
+    
+    EXPECTED_LINES=150                 # actual line count of this complete script (updated after writing)
+    SELF_HASH="d41d8cd98f00b204e9800998ecf8427e"   # placeholder – replace with actual md5 of full script
+    
+    PROJ_DIR="$(cd "$(dirname "$0")" && pwd)"
+    cd "$PROJ_DIR"
+    
+  References to logs:
+Script: ./audit_logs/apply_fixlist_0140.sh
+  Head:
+    #!/usr/bin/env bash
+    # apply_fixlist_0140.sh – Godot scene repairs + HUD + physics (v140)
+    # Self‑verification uses step count and a trailer string – not line count.
+    set -uo pipefail
+    
+    PROJ_DIR="$(cd "$(dirname "$0")" && pwd)"
+    cd "$PROJ_DIR"
+    
+    # ---------- truncation guard (content‑based) --------------------------
+    REQUIRED_STEPS=12
+    FOUND_STEPS=$(grep -c '^_step "' "$0" || true)
+    if [ "$FOUND_STEPS" -lt "$REQUIRED_STEPS" ]; then
+        echo "FATAL: Only $FOUND_STEPS fix steps found (need $REQUIRED_STEPS).  Script is truncated."
+        exit 1
+    fi
+  References to logs:
+Script: ./audit_logs/apply_fixlist_0141.sh
+  Head:
+    #!/usr/bin/env bash
+    # apply_fixlist_0141.sh – Godot scene repairs + HUD + physics (v141)
+    # Self‑verification: counts _step calls (≥12) and expects trailer line.
+    set -uo pipefail
+    
+    PROJ_DIR="$(cd "$(dirname "$0")" && pwd)"
+    cd "$PROJ_DIR"
+    
+    # ---------- truncation guard (content‑based) --------------------------
+    REQUIRED_STEPS=12
+    FOUND_STEPS=$(grep -c '^_step "' "$0" || true)
+    if [ "$FOUND_STEPS" -lt "$REQUIRED_STEPS" ]; then
+        echo "FATAL: Only $FOUND_STEPS fix steps found (need $REQUIRED_STEPS).  Script is truncated."
+        exit 1
+    fi
+  References to logs:
+Script: ./audit_logs/apply_fixlist_0142.sh
+  Head:
+    #!/usr/bin/env bash
+    # apply_fixlist_0142.sh – Godot scene repairs + HUD + physics (v143)
+    set -uo pipefail
+    
+    PROJ_DIR="$(cd "$(dirname "$0")" && pwd)"
+    cd "$PROJ_DIR"
+    
+    # ---------- truncation guard (content‑based) --------------------------
+    REQUIRED_STEPS=12
+    FOUND_STEPS=$(grep -c '^_step "' "$0" || true)
+    if [ "$FOUND_STEPS" -lt "$REQUIRED_STEPS" ]; then
+        echo "FATAL: Only $FOUND_STEPS fix steps found (need $REQUIRED_STEPS).  Script is truncated."
+        exit 1
+    fi
+    
+  References to logs:
+Script: ./audit_logs/apply_fixlist_0144.sh
+  Head:
+    #!/usr/bin/env bash
+    # apply_fixlist_0144.sh – Godot scene repairs + HUD + physics (v144)
+    # Fixes: renderer check now verifies section placement; removed stray char.
+    set -uo pipefail
+    
+    PROJ_DIR="$(cd "$(dirname "$0")" && pwd)"
+    cd "$PROJ_DIR"
+    
+    # ---------- truncation guard (content‑based) --------------------------
+    REQUIRED_STEPS=12
+    FOUND_STEPS=$(grep -c '^_step "' "$0" || true)
+    if [ "$FOUND_STEPS" -lt "$REQUIRED_STEPS" ]; then
+        echo "FATAL: Only $FOUND_STEPS fix steps found (need $REQUIRED_STEPS).  Script is truncated."
+        exit 1
+    fi
+  References to logs:
+Script: ./audit_logs/apply_fixlist_0145.sh
+  Head:
+    #!/usr/bin/env bash
+    # apply_fixlist_0145.sh – Godot scene repairs + HUD + physics (v145)
+    # Fixes: renderer section creation, GDScript indentation (tabs), round() argument count.
+    set -uo pipefail
+    
+    PROJ_DIR="$(cd "$(dirname "$0")" && pwd)"
+    cd "$PROJ_DIR"
+    
+    # ---------- truncation guard (content‑based) --------------------------
+    REQUIRED_STEPS=12
+    FOUND_STEPS=$(grep -c '^_step "' "$0" || true)
+    if [ "$FOUND_STEPS" -lt "$REQUIRED_STEPS" ]; then
+        echo "FATAL: Only $FOUND_STEPS fix steps found (need $REQUIRED_STEPS).  Script is truncated."
+        exit 1
+    fi
+  References to logs:
+Script: ./audit_logs/apply_fixlist_0146.sh
+  Head:
+    #!/usr/bin/env bash
+    # apply_fixlist_0146.sh – Godot scene repairs + HUD + physics (v146)
+    # Fixes: v145 unbound variable (HUD via function) and renderer verification (Python).
+    set -uo pipefail
+    
+    PROJ_DIR="$(cd "$(dirname "$0")" && pwd)"
+    cd "$PROJ_DIR"
+    
+    # ---------- truncation guard (content‑based) --------------------------
+    REQUIRED_STEPS=12
+    FOUND_STEPS=$(grep -c '^_step "' "$0" || true)
+    if [ "$FOUND_STEPS" -lt "$REQUIRED_STEPS" ]; then
+        echo "FATAL: Only $FOUND_STEPS fix steps found (need $REQUIRED_STEPS).  Script is truncated."
+        exit 1
+    fi
+  References to logs:
+Script: ./audit_logs/apply_fixlist_0147.sh
+  Head:
+    #!/usr/bin/env bash
+    # apply_fixlist_0147.sh – Godot scene repairs + HUD + physics (v147)
+    # Fixes: v146 indentation corruption in parachute_controller.gd and stray '0'.
+    set -uo pipefail
+    
+    PROJ_DIR="$(cd "$(dirname "$0")" && pwd)"
+    cd "$PROJ_DIR"
+    
+    # ---------- truncation guard (content‑based) --------------------------
+    REQUIRED_STEPS=12
+    FOUND_STEPS=$(grep -c '^_step "' "$0" || true)
+    if [ "$FOUND_STEPS" -lt "$REQUIRED_STEPS" ]; then
+        echo "FATAL: Only $FOUND_STEPS fix steps found (need $REQUIRED_STEPS).  Script is truncated."
+        exit 1
+    fi
+  References to logs:
+Script: ./audit_logs/apply_fixlist_0148.sh
+  Head:
+    #!/usr/bin/env bash
+    # apply_fixlist_0148.sh – Godot scene repairs + HUD + physics (v148)
+    # Fixes: v147 indentation corruption in parachute_controller.gd (full rewrite with tabs),
+    #        main.tscn parse error (external sky material), stray '0' removed.
+    set -uo pipefail
+    
+    PROJ_DIR="$(cd "$(dirname "$0")" && pwd)"
+    cd "$PROJ_DIR"
+    
+    # ---------- truncation guard (content‑based) --------------------------
+    REQUIRED_STEPS=13
+    FOUND_STEPS=$(grep -c '^_step "' "$0" || true)
+    if [ "$FOUND_STEPS" -lt "$REQUIRED_STEPS" ]; then
+        echo "FATAL: Only $FOUND_STEPS fix steps found (need $REQUIRED_STEPS).  Script is truncated."
+        exit 1
+  References to logs:
+Script: ./audit_logs/apply_fixlist_0149.sh
+  Head:
+    #!/usr/bin/env bash
+    # apply_fixlist_0149.sh – Godot scene repairs + HUD + physics (v149)
+    # Fixes: v148 indentation corruption in parachute_controller.gd (fresh file with tabs),
+    #        main.tscn parse error (removed invalid environment_sky), stray '0' removed.
+    set -uo pipefail
+    
+    PROJ_DIR="$(cd "$(dirname "$0")" && pwd)"
+    cd "$PROJ_DIR"
+    
+    # ---------- truncation guard (content‑based) --------------------------
+    REQUIRED_STEPS=12
+    FOUND_STEPS=$(grep -c '^_step "' "$0" || true)
+    if [ "$FOUND_STEPS" -lt "$REQUIRED_STEPS" ]; then
+        echo "FATAL: Only $FOUND_STEPS fix steps found (need $REQUIRED_STEPS).  Script is truncated."
+        exit 1
+  References to logs:
+Script: ./audit_logs/apply_fixlist_0150.sh
+  Head:
+    #!/usr/bin/env bash
+    # apply_fixlist_0150.sh – Godot scene repairs + HUD + physics (v150)
+    # Fixes: v148 indentation corruption in parachute_controller.gd (fresh file with tabs),
+    #        main.tscn parse error (removed invalid environment_sky), stray '0' removed.
+    # v150: Final trailer now a null command (:) to avoid glob expansion errors.
+    set -uo pipefail
+    
+    PROJ_DIR="$(cd "$(dirname "$0")" && pwd)"
+    cd "$PROJ_DIR"
+    
+    # ---------- truncation guard (content‑based) --------------------------
+    REQUIRED_STEPS=12
+    FOUND_STEPS=$(grep -c '^_step "' "$0" || true)
+    if [ "$FOUND_STEPS" -lt "$REQUIRED_STEPS" ]; then
+        echo "FATAL: Only $FOUND_STEPS fix steps found (need $REQUIRED_STEPS).  Script is truncated."
+  References to logs:
+Script: ./audit_logs/apply_fixlist_0151.sh
+  Head:
+    #!/usr/bin/env bash
+    # apply_fixlist_0151.sh – Godot scene repairs + HUD + physics (v151)
+    # Fixes: v150 literal \t in GDScript → parse error.
+    #        Now uses Python to write parachute_controller.gd with real tabs.
+    #        Trailer is a null command to avoid glob expansion errors.
+    set -uo pipefail
+    
+    PROJ_DIR="$(cd "$(dirname "$0")" && pwd)"
+    cd "$PROJ_DIR"
+    
+    # ---------- truncation guard (content‑based) --------------------------
+    REQUIRED_STEPS=12
+    FOUND_STEPS=$(grep -c '^_step "' "$0" || true)
+    if [ "$FOUND_STEPS" -lt "$REQUIRED_STEPS" ]; then
+        echo "FATAL: Only $FOUND_STEPS fix steps found (need $REQUIRED_STEPS).  Script is truncated."
+  References to logs:
+Script: ./audit_logs/apply_fixlist_0152.sh
+  Head:
+    #!/usr/bin/env bash
+    # apply_fixlist_0152.sh – Godot scene repairs + HUD + physics (v152)
+    # Fixes: v151 check passed on broken file with literal \t.
+    #        Now detects literal \t and rewrites parachute_controller.gd with real tabs.
+    #        Trailer is a null command to avoid glob expansion errors.
+    set -uo pipefail
+    
+    PROJ_DIR="$(cd "$(dirname "$0")" && pwd)"
+    cd "$PROJ_DIR"
+    
+    # ---------- truncation guard (content‑based) --------------------------
+    REQUIRED_STEPS=12
+    FOUND_STEPS=$(grep -c '^_step "' "$0" || true)
+    if [ "$FOUND_STEPS" -lt "$REQUIRED_STEPS" ]; then
+        echo "FATAL: Only $FOUND_STEPS fix steps found (need $REQUIRED_STEPS).  Script is truncated."
+  References to logs:
+=== 4. LOG FILE PATTERNS ===
+Log: ./audit_logs/godot_headless.log
+  Size: 4.0K
+  Lines: 10
+  First 5 lines:
+    Godot Engine v4.6.2.stable.official.71f334935 - https://godotengine.org
+    
+    ERROR: Cannot open file 'res://.godot/imported/earth_mesh.obj-2e4479bbcd13b1541a8572743c34c3fb.mesh'.
+       at: load (core/io/resource_format_binary.cpp:1220)
+    ERROR: Failed loading resource: res://.godot/imported/earth_mesh.obj-2e4479bbcd13b1541a8572743c34c3fb.mesh.
+  Last 5 lines:
+       at: _load (core/io/resource_loader.cpp:343)
+    ERROR: Failed loading resource: res://assets/terrain/earth_mesh.obj.
+       at: _load (core/io/resource_loader.cpp:343)
+    ERROR: res://scenes/terrain.tscn:7 - Parse Error: [ext_resource] referenced non-existent resource at: res://assets/terrain/earth_mesh.obj.
+       at: _printerr (scene/resources/resource_format_text.cpp:40)
+  Common patterns:
+          4 ERROR
+          1 4.6
+Log: ./audit_logs/godot_final.log
+  Size: 4.0K
+  Lines: 2
+  First 5 lines:
+    Godot Engine v4.6.2.stable.official.71f334935 - https://godotengine.org
+    
+  Last 5 lines:
+    Godot Engine v4.6.2.stable.official.71f334935 - https://godotengine.org
+    
+  Common patterns:
+          1 4.6
+Log: ./audit_logs/godot_check_268990_check01.log
+  Size: 4.0K
+  Lines: 4
+  First 5 lines:
+      File "<stdin>", line 2
+        ... (exact same VERIFY_FILES code as v186)
+             ^^^^^^^^^^
+    SyntaxError: invalid syntax. Perhaps you forgot a comma?
+  Last 5 lines:
+      File "<stdin>", line 2
+        ... (exact same VERIFY_FILES code as v186)
+             ^^^^^^^^^^
+    SyntaxError: invalid syntax. Perhaps you forgot a comma?
+  Common patterns:
+          1 VERIFY
+          1 FILES
+Log: ./audit_logs/godot_check_268990_pixel.log
+  Size: 4.0K
+  Lines: 4
+  First 5 lines:
+    Traceback (most recent call last):
+      File "<stdin>", line 17, in <module>
+    IndexError: invalid index to scalar variable.
+    ERROR during pixel analysis: invalid index to scalar variable.
+  Last 5 lines:
+    Traceback (most recent call last):
+      File "<stdin>", line 17, in <module>
+    IndexError: invalid index to scalar variable.
+    ERROR during pixel analysis: invalid index to scalar variable.
+  Common patterns:
+          1 ERROR
+Log: ./audit_logs/godot_pixel.log
+  Size: 4.0K
+  Lines: 2
+  First 5 lines:
+    v221: R=212 G=212 B=212 stddev=84.4
+    ❌ Terrain NOT visible
+  Last 5 lines:
+    v221: R=212 G=212 B=212 stddev=84.4
+    ❌ Terrain NOT visible
+  Common patterns:
+          1 NOT
+          1 84.4
+Log: ./audit_logs/godot_out.log
+  Size: 4.0K
+  Lines: 6
+  First 5 lines:
+    Godot Engine v4.6.2.stable.official.71f334935 - https://godotengine.org
+    WARNING: Could not set V-Sync mode, as changing V-Sync mode is not supported by the graphics driver.
+         at: set_use_vsync (platform/linuxbsd/x11/gl_manager_x11.cpp:364)
+    OpenGL API 4.5 (Core Profile) Mesa 25.3.6 - Compatibility - Using Device: Mesa - llvmpipe (LLVM 21.1.8, 256 bits)
+    
+  Last 5 lines:
+    WARNING: Could not set V-Sync mode, as changing V-Sync mode is not supported by the graphics driver.
+         at: set_use_vsync (platform/linuxbsd/x11/gl_manager_x11.cpp:364)
+    OpenGL API 4.5 (Core Profile) Mesa 25.3.6 - Compatibility - Using Device: Mesa - llvmpipe (LLVM 21.1.8, 256 bits)
+    
+    MESA-INTEL: warning: Ivy Bridge Vulkan support is incomplete
+  Common patterns:
+          1 WARNING
+          1 MESA
+          1 LLVM
+          1 INTEL
+          1 API
+          1 4.6
+          1 4.5
+          1 25.3
+          1 21.1
+Log: ./audit_logs/godot_run.log
+  Size: 8.0K
+  Lines: 69
+  First 5 lines:
+    WorkerThreadPool: 4 threads, 1 max low-priority.
+    Godot Engine v4.6.3.stable.fedora.7d41c59c4 - https://godotengine.org
+    TextServer: Added interface "Dummy"
+    TextServer: Added interface "ICU / HarfBuzz / Graphite (Built-in)"
+    Unrecognized output string "misc2" in mapping:
+  Last 5 lines:
+    [StructuredLogger] sentry_available=false
+    XR: Clearing primary interface
+    XR: Removed interface "Native mobile"
+    XR: Removed interface "OpenXR"
+    PulseAudio: context terminated
+  Common patterns:
+         13 SHA
+         13 GLES
+          3 VERBATIM
+          3 GPU
+          3 API
+          2 ICU
+          2 HASH
+          2 1.1
+          2 0.8
+          2 0.4
+Log: ./audit_logs/godot_run_v249.log
+  Size: 4.0K
+  Lines: 12
+  First 5 lines:
+    Godot Engine v4.6.2.stable.official.71f334935 - https://godotengine.org
+    WARNING: Could not set V-Sync mode, as changing V-Sync mode is not supported by the graphics driver.
+         at: set_use_vsync (platform/linuxbsd/x11/gl_manager_x11.cpp:364)
+    OpenGL API 4.5 (Core Profile) Mesa 25.3.6 - Compatibility - Using Device: Mesa - llvmpipe (LLVM 21.1.8, 256 bits)
+    
+  Last 5 lines:
+    [TERRAIN] verts: 2701 tris: 5184
+    [TERRAIN] Y range: 0.0 to 11.0
+    [TERRAIN] Added to scene
+    [TERRAIN] Position: (0.0, 0.0, 0.0)
+    [TERRAIN] AABB: [P: (-1000.0, 0.0, -506.8493), S: (2000.0, 11.0, 1013.699)]
+  Common patterns:
+          5 TERRAIN
+          5 0.0
+          2 11.0
+          1 WARNING
+          1 SPHERE
+          1 LLVM
+          1 BUILD
+          1 API
+          1 AABB
+          1 506.8493
+Log: ./audit_logs/godot_runtime.log
+  Size: 4.0K
+  Lines: 13
+  First 5 lines:
+    Godot Engine v4.6.2.stable.official.71f334935 - https://godotengine.org
+    WARNING: Could not set V-Sync mode, as changing V-Sync mode is not supported by the graphics driver.
+         at: set_use_vsync (platform/linuxbsd/x11/gl_manager_x11.cpp:364)
+    OpenGL API 4.5 (Core Profile) Mesa 25.3.6 - Compatibility - Using Device: Mesa - llvmpipe (LLVM 21.1.8, 256 bits)
+    
+  Last 5 lines:
+       GDScript backtrace (most recent call first):
+           [0] _ready (res://scripts/build_terrain.gd:43)
+    [TERRAIN] 262144 verts with satellite texture
+    [RUNWAYS] 12/30 + 5/23 added
+    [COMPLETE] KDED Airport scene – window will stay open!
+  Common patterns:
+          2 KDED
+          1 WARNING
+          1 TERRAIN
+          1 RUNWAYS
+          1 LLVM
+          1 GDS
+          1 ERROR
+          1 COMPLETE
+          1 API
+          1 4.6
+Log: ./audit_logs/diagnostic.log
+  Size: 4.0K
+  Lines: 2
+  First 5 lines:
+    Screenshot: R=15 G=28 B=0 std=41.8
+    ✅ GREEN TERRAIN VISIBLE
+  Last 5 lines:
+    Screenshot: R=15 G=28 B=0 std=41.8
+    ✅ GREEN TERRAIN VISIBLE
+  Common patterns:
+          1 VISIBLE
+          1 TERRAIN
+          1 GREEN
+          1 41.8
+Log: ./audit_logs/ab_test_20260619_100511.log
+  Size: 4.0K
+  Lines: 24
+  First 5 lines:
+    === A/B Test Run at 2026-06-19T10:05:11.330540 ===
+    PID: 1107926
+    
+    Godot Engine v4.6.3.stable.fedora.7d41c59c4 - https://godotengine.org
+    OpenGL API 4.2 (Core Profile) Mesa 25.3.6 - Compatibility - Using Device: Intel - Mesa Intel(R) HD Graphics 4000 (IVB GT2)
+  Last 5 lines:
+       at: load (modules/gdscript/gdscript.cpp:2907)
+    [VERBATIM] DB OPEN OK user://parachute.db
+    [VERBATIM] DB tables ensured
+    [VERBATIM] Watchdog: SqliteDb available — starting screenshot scan
+    [VERBATIM] Watchdog: scan disabled — single-launch screenshot mode
+  Common patterns:
+          7 ERROR
+          5 GDS
+          4 VERBATIM
+          4 SCRIPT
+          1 PID
+          1 OPEN
+          1 IVB
+          1 API
+          1 4.6
+          1 4.2
+Log: ./audit_logs/godot_run_20260619_104120.log
+  Size: 4.0K
+  Lines: 27
+  First 5 lines:
+    === STDOUT ===
+    Godot Engine v4.6.3.stable.fedora.7d41c59c4 - https://godotengine.org
+    OpenGL API 4.2 (Core Profile) Mesa 25.3.6 - Compatibility - Using Device: Intel - Mesa Intel(R) HD Graphics 4000 (IVB GT2)
+    
+    [VERBATIM] DB OPEN OK user://parachute.db
+  Last 5 lines:
+    ERROR: Failed to load script "res://scripts/build_terrain.gd" with error "Parse error".
+       at: load (modules/gdscript/gdscript.cpp:2907)
+    
+    Exit code: -15
+    Ready ok seen: False
+  Common patterns:
+          7 ERROR
+          5 GDS
+          4 VERBATIM
+          4 SCRIPT
+          1 STDOUT
+          1 STDERR
+          1 OPEN
+          1 IVB
+          1 API
+          1 4.6
+Log: ./audit_logs/ab_test_20260619_145947.log
+  Size: 4.0K
+  Lines: 64
+  First 5 lines:
+    === A/B Test Run at 2026-06-19T14:59:47.375587 ===
+    PID: 1161683
+    
+    Godot Engine v4.6.3.stable.fedora.7d41c59c4 - https://godotengine.org
+    OpenGL API 4.2 (Core Profile) Mesa 25.3.6 - Compatibility - Using Device: Intel - Mesa Intel(R) HD Graphics 4000 (IVB GT2)
+  Last 5 lines:
+    [VERBATIM] ARM GATE: Right arm rotation = (1.570796, -1.570796, 0.0)
+    [VERBATIM] ARM GATE: Arms are lowered
+    [VERBATIM] ... EXIT _ready ok=true
+    
+    Exit code: -15
+  Common patterns:
+         56 VERBATIM
+         12 ENTER
+         11 EXIT
+          4 1.570796
+          3 GATE
+          3 ARM
+          3 0.0
+          2 TWISTS
+          2 LINE
+          1 SPACE
+Log: ./audit_logs/ab_test_20260619_150020.log
+  Size: 4.0K
+  Lines: 64
+  First 5 lines:
+    === A/B Test Run at 2026-06-19T15:00:20.185330 ===
+    PID: 1161832
+    
+    Godot Engine v4.6.3.stable.fedora.7d41c59c4 - https://godotengine.org
+    OpenGL API 4.2 (Core Profile) Mesa 25.3.6 - Compatibility - Using Device: Intel - Mesa Intel(R) HD Graphics 4000 (IVB GT2)
+  Last 5 lines:
+    [VERBATIM] ARM GATE: Right arm rotation = (1.570796, -1.570796, 0.0)
+    [VERBATIM] ARM GATE: Arms are lowered
+    [VERBATIM] ... EXIT _ready ok=true
+    
+    Exit code: -15
+  Common patterns:
+         56 VERBATIM
+         12 ENTER
+         11 EXIT
+          4 1.570796
+          3 GATE
+          3 ARM
+          3 0.0
+          2 TWISTS
+          2 LINE
+          1 SPACE
+Log: ./audit_logs/ab_test_20260619_151925.log
+  Size: 4.0K
+  Lines: 62
+  First 5 lines:
+    === A/B Test Run at 2026-06-19T15:19:25.207216 ===
+    Session: 31  run_id: 22
+    Godot Engine v4.6.3.stable.fedora.7d41c59c4 - https://godotengine.org
+    OpenGL API 4.2 (Core Profile) Mesa 25.3.6 - Compatibility - Using Device: Intel - Mesa Intel(R) HD Graphics 4000 (IVB GT2)
+    
+  Last 5 lines:
+    [VERBATIM] ARM GATE: Right arm rotation = (1.570796, -1.570796, 0.0)
+    [VERBATIM] ARM GATE: Arms are lowered
+    [VERBATIM] ... EXIT _ready ok=true
+    
+    Exit code: -9  Common patterns:
+         56 VERBATIM
+         12 ENTER
+         11 EXIT
+          4 1.570796
+          3 GATE
+          3 ARM
+          3 0.0
+          2 GOOD
+          1 SPACE
+          1 RESET
+Log: ./audit_logs/ab_test_20260619_151956.log
+  Size: 4.0K
+  Lines: 62
+  First 5 lines:
+    === A/B Test Run at 2026-06-19T15:19:56.236813 ===
+    Session: 31  run_id: 23
+    Godot Engine v4.6.3.stable.fedora.7d41c59c4 - https://godotengine.org
+    OpenGL API 4.2 (Core Profile) Mesa 25.3.6 - Compatibility - Using Device: Intel - Mesa Intel(R) HD Graphics 4000 (IVB GT2)
+    
+  Last 5 lines:
+    [VERBATIM] ARM GATE: Right arm rotation = (1.570796, -1.570796, 0.0)
+    [VERBATIM] ARM GATE: Arms are lowered
+    [VERBATIM] ... EXIT _ready ok=true
+    
+    Exit code: -9  Common patterns:
+         56 VERBATIM
+         12 ENTER
+         11 EXIT
+          4 1.570796
+          3 GATE
+          3 ARM
+          3 0.0
+          2 LOCK
+          2 BAG
+          1 SPACE
+Log: ./audit_logs/ab_test_20260619_161418.log
+  Size: 4.0K
+  Lines: 7
+  First 5 lines:
+    [VERBATIM] Screenshot saved: /home/owner/Documents/69f7bcc6-1f68-83ea-b9b2-95a4db8629ac/parachute-cfd-game/godot_project/../audit_logs/screenshots/v314_20260619T161431.png
+    
+    [VERBATIM] Real wind loaded: WSW 8.68976 kts
+    
+    [VERBATIM] Wind updated: 12.5 kts @ 240.0°
+  Last 5 lines:
+    [VERBATIM] Real wind loaded: WSW 8.68976 kts
+    
+    [VERBATIM] Wind updated: 12.5 kts @ 240.0°
+    
+    [VERBATIM] Wind updated: 12.5 kts @ 240.0°
+  Common patterns:
+          4 VERBATIM
+          2 240.0
+          2 12.5
+          1 WSW
+          1 8.68976
+Log: ./audit_logs/ab_test_20260620_053133.log
+  Size: 4.0K
+  Lines: 62
+  First 5 lines:
+    === A/B Test Run at 2026-06-20T05:31:33.268863 ===
+    Session: 31  run_id: 25
+    Godot Engine v4.6.3.stable.fedora.7d41c59c4 - https://godotengine.org
+    OpenGL API 4.2 (Core Profile) Mesa 25.3.6 - Compatibility - Using Device: Intel - Mesa Intel(R) HD Graphics 4000 (IVB GT2)
+    
+  Last 5 lines:
+    [VERBATIM] ARM GATE: Right arm rotation = (1.570796, -1.570796, 0.0)
+    [VERBATIM] ARM GATE: Arms are lowered
+    [VERBATIM] ... EXIT _ready ok=true
+    
+    Exit code: -9  Common patterns:
+         56 VERBATIM
+         12 ENTER
+         11 EXIT
+          4 1.570796
+          3 GATE
+          3 ARM
+          3 0.0
+          2 OVER
+          2 LINE
+          1 SPACE
+Log: ./audit_logs/ab_test_20260620_053245.log
+  Size: 4.0K
+  Lines: 62
+  First 5 lines:
+    === A/B Test Run at 2026-06-20T05:32:45.922715 ===
+    Session: 31  run_id: 26
+    Godot Engine v4.6.3.stable.fedora.7d41c59c4 - https://godotengine.org
+    OpenGL API 4.2 (Core Profile) Mesa 25.3.6 - Compatibility - Using Device: Intel - Mesa Intel(R) HD Graphics 4000 (IVB GT2)
+    
+  Last 5 lines:
+    [VERBATIM] ARM GATE: Right arm rotation = (1.570796, -1.570796, 0.0)
+    [VERBATIM] ARM GATE: Arms are lowered
+    [VERBATIM] ... EXIT _ready ok=true
+    
+    Exit code: -9  Common patterns:
+         56 VERBATIM
+         12 ENTER
+         11 EXIT
+          4 1.570796
+          3 GATE
+          3 ARM
+          3 0.0
+          2 OVER
+          2 LINE
+          1 SPACE
+Log: ./audit_logs/ab_test_20260620_071508.log
+  Size: 4.0K
+  Lines: 13
+  First 5 lines:
+    Godot Engine v4.6.3.stable.fedora.7d41c59c4 - https://godotengine.org
+    
+    [VERBATIM] DB OPEN OK /home/owner/Documents/69f7bcc6-1f68-83ea-b9b2-95a4db8629ac/parachute-cfd-game/parachute_mutations.db
+    [VERBATIM] DB tables ensured
+    [VERBATIM] Watchdog: SqliteDb available — starting screenshot scan
+  Last 5 lines:
+    [VERBATIM] Screenshot library loaded: 953
+    [VERBATIM] EXIT _init_screenshot_library ok
+    [VERBATIM] ENTER _show_loading_screen (placeholder)
+    [VERBATIM] Placeholder loading screen shown
+    [VERBATIM] Baked colours loaded: 3145728
+  Common patterns:
+         11 VERBATIM
+          3 ENTER
+          1 OPEN
+          1 EXIT
+          1 4.6
+=== 5. SCRIPT → LOG MAPPING ===
+Script: ./scripts/setup_openfoam_case.sh
+        echo "USAGE: $0 <case_name>"
+        echo "  Creates cases/<case_name> with OpenFOAM directory structure"
+    cat > "$CASE_DIR/Allrun.mesh" << 'EOFMESH'
+    cat > "$CASE_DIR/Allrun.isothermal" << 'EOFISO'
+    cat > "$CASE_DIR/Allrun.thermal" << 'EOFTHERM'
+Script: ./scripts/create_terrain_dae.sh
+Script: ./scripts/fix_rule30_stderr.sh
+    # WHY:  Hundreds of 2>&1 occurrences were found; each hides errors.
+    #       This script replaces 2>&1 with 2>&1.
+    BEFORE=$(grep -c '2>&1' apply_fixlist_*.sh 2>&1 | awk -F: '{sum+=$2} END {print sum+0}')
+    echo "[VERBATIM] Before fix: $BEFORE occurrences of 2>&1"
+    find . -name "apply_fixlist_*.sh" -exec sed -i 's/2>\/dev\/null/2>&1/g' {} \;
+Script: ./audit_logs/apply_fixlist_0122.sh
+    # Safer: explicit error handling, progress markers, guaranteed audit logs.
+        echo "FATAL: This script appears truncated (found $LINES lines, expected >= 600)."
+            sqlite3 .cfd_healdb .dump > audit_logs/cfd_healdb_dump.txt 2>&1 || true
+            sqlite3 .cfd_healdb 'SELECT h.timestamp, p.description, h.outcome FROM heal_events h LEFT JOIN error_patterns p ON h.pattern_id=p.id ORDER BY h.id DESC LIMIT 20' > audit_logs/heal_history.txt 2>&1 || true
+            sqlite3 .cfd_healdb 'SELECT * FROM unknown_errors' > audit_logs/unknown_errors.txt 2>&1 || true
+Script: ./audit_logs/apply_fixlist_0123.sh
+        echo "FATAL: This script appears truncated (found $LINES lines, expected >= 600)."
+            sqlite3 .cfd_healdb .dump > audit_logs/cfd_healdb_dump.txt 2>&1 || true
+            sqlite3 .cfd_healdb 'SELECT h.timestamp, p.description, h.outcome FROM heal_events h LEFT JOIN error_patterns p ON h.pattern_id=p.id ORDER BY h.id DESC LIMIT 20' > audit_logs/heal_history.txt 2>&1 || true
+            sqlite3 .cfd_healdb 'SELECT * FROM unknown_errors' > audit_logs/unknown_errors.txt 2>&1 || true
+            tail -100 "${AUDIT_CASE_DIR:-cases/skydive_deland}/log.simpleFoam" 2>&1 > audit_logs/last_sim.txt || true
+Script: ./audit_logs/apply_fixlist_0125.sh
+        echo "FATAL: This script appears truncated (found $LINES lines, expected >= 600)."
+            sqlite3 .cfd_healdb .dump > audit_logs/cfd_healdb_dump.txt 2>&1 || true
+            sqlite3 .cfd_healdb 'SELECT h.timestamp, p.description, h.outcome FROM heal_events h LEFT JOIN error_patterns p ON h.pattern_id=p.id ORDER BY h.id DESC LIMIT 20' > audit_logs/heal_history.txt 2>&1 || true
+            sqlite3 .cfd_healdb 'SELECT * FROM unknown_errors' > audit_logs/unknown_errors.txt 2>&1 || true
+            tail -100 cases/skydive_deland/log.simpleFoam 2>&1 > audit_logs/last_sim.txt || true
+Script: ./audit_logs/apply_fixlist_0126.sh
+        echo "FATAL: This script appears truncated (found $LINES lines, expected >= 600)."
+            sqlite3 .cfd_healdb .dump > audit_logs/cfd_healdb_dump.txt 2>&1 || true
+            sqlite3 .cfd_healdb 'SELECT h.timestamp, p.description, h.outcome FROM heal_events h LEFT JOIN error_patterns p ON h.pattern_id=p.id ORDER BY h.id DESC LIMIT 20' > audit_logs/heal_history.txt 2>&1 || true
+            sqlite3 .cfd_healdb 'SELECT * FROM unknown_errors' > audit_logs/unknown_errors.txt 2>&1 || true
+            tail -100 cases/skydive_deland/log.simpleFoam 2>&1 > audit_logs/last_sim.txt || true
+Script: ./audit_logs/apply_fixlist_0138.sh
+        echo "FATAL: Script truncated (found $LINES lines, expected >= $EXPECTED_LINES)."
+    # if command -v md5sum 2>&1; then
+            sqlite3 .cfd_healdb .dump > audit_logs/cfd_healdb_dump.txt 2>&1 || true
+            sqlite3 .cfd_healdb 'SELECT h.timestamp, p.description, h.outcome FROM heal_events h LEFT JOIN error_patterns p ON h.pattern_id=p.id ORDER BY h.id DESC LIMIT 20' > audit_logs/heal_history.txt 2>&1 || true
+            sqlite3 .cfd_healdb 'SELECT * FROM unknown_errors' > audit_logs/unknown_errors.txt 2>&1 || true
+Script: ./audit_logs/apply_fixlist_0140.sh
+            sqlite3 .cfd_healdb .dump > audit_logs/cfd_healdb_dump.txt 2>&1 || true
+            sqlite3 .cfd_healdb 'SELECT h.timestamp, p.description, h.outcome FROM heal_events h LEFT JOIN error_patterns p ON h.pattern_id=p.id ORDER BY h.id DESC LIMIT 20' > audit_logs/heal_history.txt 2>&1 || true
+            sqlite3 .cfd_healdb 'SELECT * FROM unknown_errors' > audit_logs/unknown_errors.txt 2>&1 || true
+            tail -100 cases/skydive_deland/log.simpleFoam 2>&1 > audit_logs/last_sim.txt || true
+            cp "$0" audit_logs/apply_fixlist_0140.sh 2>&1 || true
+Script: ./audit_logs/apply_fixlist_0141.sh
+            sqlite3 .cfd_healdb .dump > audit_logs/cfd_healdb_dump.txt 2>&1 || true
+            sqlite3 .cfd_healdb 'SELECT h.timestamp, p.description, h.outcome FROM heal_events h LEFT JOIN error_patterns p ON h.pattern_id=p.id ORDER BY h.id DESC LIMIT 20' > audit_logs/heal_history.txt 2>&1 || true
+            sqlite3 .cfd_healdb 'SELECT * FROM unknown_errors' > audit_logs/unknown_errors.txt 2>&1 || true
+            tail -100 cases/skydive_deland/log.simpleFoam 2>&1 > audit_logs/last_sim.txt || true
+            cp "$0" audit_logs/apply_fixlist_0141.sh 2>&1 || true
+Script: ./audit_logs/apply_fixlist_0142.sh
+            sqlite3 .cfd_healdb .dump > audit_logs/cfd_healdb_dump.txt 2>&1 || true
+            sqlite3 .cfd_healdb 'SELECT h.timestamp, p.description, h.outcome FROM heal_events h LEFT JOIN error_patterns p ON h.pattern_id=p.id ORDER BY h.id DESC LIMIT 20' > audit_logs/heal_history.txt 2>&1 || true
+            sqlite3 .cfd_healdb 'SELECT * FROM unknown_errors' > audit_logs/unknown_errors.txt 2>&1 || true
+            tail -100 cases/skydive_deland/log.simpleFoam 2>&1 > audit_logs/last_sim.txt || true
+            cp "$0" audit_logs/apply_fixlist_0142.sh 2>&1 || true
+Script: ./audit_logs/apply_fixlist_0144.sh
+            sqlite3 .cfd_healdb .dump > audit_logs/cfd_healdb_dump.txt 2>&1 || true
+            sqlite3 .cfd_healdb 'SELECT h.timestamp, p.description, h.outcome FROM heal_events h LEFT JOIN error_patterns p ON h.pattern_id=p.id ORDER BY h.id DESC LIMIT 20' > audit_logs/heal_history.txt 2>&1 || true
+            sqlite3 .cfd_healdb 'SELECT * FROM unknown_errors' > audit_logs/unknown_errors.txt 2>&1 || true
+            tail -100 cases/skydive_deland/log.simpleFoam 2>&1 > audit_logs/last_sim.txt || true
+            cp "$0" audit_logs/apply_fixlist_0144.sh 2>&1 || true
+Script: ./audit_logs/apply_fixlist_0145.sh
+            sqlite3 .cfd_healdb .dump > audit_logs/cfd_healdb_dump.txt 2>&1 || true
+            sqlite3 .cfd_healdb 'SELECT h.timestamp, p.description, h.outcome FROM heal_events h LEFT JOIN error_patterns p ON h.pattern_id=p.id ORDER BY h.id DESC LIMIT 20' > audit_logs/heal_history.txt 2>&1 || true
+            sqlite3 .cfd_healdb 'SELECT * FROM unknown_errors' > audit_logs/unknown_errors.txt 2>&1 || true
+            tail -100 cases/skydive_deland/log.simpleFoam 2>&1 > audit_logs/last_sim.txt || true
+            cp "$0" audit_logs/apply_fixlist_0145.sh 2>&1 || true
+Script: ./audit_logs/apply_fixlist_0146.sh
+            sqlite3 .cfd_healdb .dump > audit_logs/cfd_healdb_dump.txt 2>&1 || true
+            sqlite3 .cfd_healdb 'SELECT h.timestamp, p.description, h.outcome FROM heal_events h LEFT JOIN error_patterns p ON h.pattern_id=p.id ORDER BY h.id DESC LIMIT 20' > audit_logs/heal_history.txt 2>&1 || true
+            sqlite3 .cfd_healdb 'SELECT * FROM unknown_errors' > audit_logs/unknown_errors.txt 2>&1 || true
+            tail -100 cases/skydive_deland/log.simpleFoam 2>&1 > audit_logs/last_sim.txt || true
+            cp "$0" audit_logs/apply_fixlist_0146.sh 2>&1 || true
+Script: ./audit_logs/apply_fixlist_0147.sh
+            sqlite3 .cfd_healdb .dump > audit_logs/cfd_healdb_dump.txt 2>&1 || true
+            sqlite3 .cfd_healdb 'SELECT h.timestamp, p.description, h.outcome FROM heal_events h LEFT JOIN error_patterns p ON h.pattern_id=p.id ORDER BY h.id DESC LIMIT 20' > audit_logs/heal_history.txt 2>&1 || true
+            sqlite3 .cfd_healdb 'SELECT * FROM unknown_errors' > audit_logs/unknown_errors.txt 2>&1 || true
+            tail -100 cases/skydive_deland/log.simpleFoam 2>&1 > audit_logs/last_sim.txt || true
+            cp "$0" audit_logs/apply_fixlist_0147.sh 2>&1 || true
+Script: ./audit_logs/apply_fixlist_0148.sh
+            sqlite3 .cfd_healdb .dump > audit_logs/cfd_healdb_dump.txt 2>&1 || true
+            sqlite3 .cfd_healdb 'SELECT h.timestamp, p.description, h.outcome FROM heal_events h LEFT JOIN error_patterns p ON h.pattern_id=p.id ORDER BY h.id DESC LIMIT 20' > audit_logs/heal_history.txt 2>&1 || true
+            sqlite3 .cfd_healdb 'SELECT * FROM unknown_errors' > audit_logs/unknown_errors.txt 2>&1 || true
+            tail -100 cases/skydive_deland/log.simpleFoam 2>&1 > audit_logs/last_sim.txt || true
+            cp "$0" audit_logs/apply_fixlist_0148.sh 2>&1 || true
+Script: ./audit_logs/apply_fixlist_0149.sh
+            sqlite3 .cfd_healdb .dump > audit_logs/cfd_healdb_dump.txt 2>&1 || true
+            sqlite3 .cfd_healdb 'SELECT h.timestamp, p.description, h.outcome FROM heal_events h LEFT JOIN error_patterns p ON h.pattern_id=p.id ORDER BY h.id DESC LIMIT 20' > audit_logs/heal_history.txt 2>&1 || true
+            sqlite3 .cfd_healdb 'SELECT * FROM unknown_errors' > audit_logs/unknown_errors.txt 2>&1 || true
+            tail -100 cases/skydive_deland/log.simpleFoam 2>&1 > audit_logs/last_sim.txt || true
+            cp "$0" audit_logs/apply_fixlist_0149.sh 2>&1 || true
+Script: ./audit_logs/apply_fixlist_0150.sh
+            sqlite3 .cfd_healdb .dump > audit_logs/cfd_healdb_dump.txt 2>&1 || true
+            sqlite3 .cfd_healdb 'SELECT h.timestamp, p.description, h.outcome FROM heal_events h LEFT JOIN error_patterns p ON h.pattern_id=p.id ORDER BY h.id DESC LIMIT 20' > audit_logs/heal_history.txt 2>&1 || true
+            sqlite3 .cfd_healdb 'SELECT * FROM unknown_errors' > audit_logs/unknown_errors.txt 2>&1 || true
+            tail -100 cases/skydive_deland/log.simpleFoam 2>&1 > audit_logs/last_sim.txt || true
+            cp "$0" audit_logs/apply_fixlist_0150.sh 2>&1 || true
+Script: ./audit_logs/apply_fixlist_0151.sh
+            sqlite3 .cfd_healdb .dump > audit_logs/cfd_healdb_dump.txt 2>&1 || true
+            sqlite3 .cfd_healdb 'SELECT h.timestamp, p.description, h.outcome FROM heal_events h LEFT JOIN error_patterns p ON h.pattern_id=p.id ORDER BY h.id DESC LIMIT 20' > audit_logs/heal_history.txt 2>&1 || true
+            sqlite3 .cfd_healdb 'SELECT * FROM unknown_errors' > audit_logs/unknown_errors.txt 2>&1 || true
+            tail -100 cases/skydive_deland/log.simpleFoam 2>&1 > audit_logs/last_sim.txt || true
+            cp "$0" audit_logs/apply_fixlist_0151.sh 2>&1 || true
+Script: ./audit_logs/apply_fixlist_0152.sh
+            sqlite3 .cfd_healdb .dump > audit_logs/cfd_healdb_dump.txt 2>&1 || true
+            sqlite3 .cfd_healdb 'SELECT h.timestamp, p.description, h.outcome FROM heal_events h LEFT JOIN error_patterns p ON h.pattern_id=p.id ORDER BY h.id DESC LIMIT 20' > audit_logs/heal_history.txt 2>&1 || true
+            sqlite3 .cfd_healdb 'SELECT * FROM unknown_errors' > audit_logs/unknown_errors.txt 2>&1 || true
+            tail -100 cases/skydive_deland/log.simpleFoam 2>&1 > audit_logs/last_sim.txt || true
+            cp "$0" audit_logs/apply_fixlist_0152.sh 2>&1 || true
+=== 6. INTEGRATION RECOMMENDATIONS ===
+Based on the audit, here is how to link the diagnostic dashboard:
+
+1. Database Integration:
+   - The game uses SQLite databases at: ./audit_logs/ab_test.db
+./pipeline_forensics.db
+./pipeline_audit.db
+./parac1ute_mutations.db
+./indent_if_scan.db
+./syntax_errors.db
+./fixes.db
+./repair.db
+./gd_patterns.db
+./gd_backup_index.db
+./parachute_mutations.db
+./fix_state.db
+./parachute_mutations_backup.db
+./repair_log.db
+./test_results.db
+./code_index.db
+./tool_coverage.db
+./patterns_mined.db
+./patterns_mined_focused.db
+./patterns_mined_v2.db
+   - The dashboard can connect directly to these databases.
+   - Run: python3 /home/owner/Documents/cec2ebe8-3579-47fd-8e26-903ffb974f97/repo/diagnostic-dashboard-1786040134/backend/import_diagnostic.py <db_file> <run_id>
+
+2. Log File Integration:
+   - Log files are located at: ./audit_logs/godot_headless.log ./audit_logs/godot_final.log ./audit_logs/godot_check_268990_check01.log ./audit_logs/godot_check_268990_pixel.log ./audit_logs/godot_pixel.log 
+   - The dashboard's import script can parse these logs if they contain structured data.
+   - For custom parsing, modify backend/import_diagnostic.py to handle your log format.
+
+3. Real-time Streaming:
+   - The game emits logs to stdout/stderr. To capture and stream:
+   - Run: ./run_game.sh 2>&1 | tee logs/live.log &
+   - Then tail and stream to dashboard: tail -f logs/live.log | python3 stream_to_dashboard.py
+
+4. Source Code Modification (Recommended):
+   - Add HTTP POST calls in GDScript functions that emit errors.
+   - Example: var http = HTTPRequest.new(); http.request('http://localhost:5001/api/diagnostics', ...)
+
+5. Quick Start:
+   - Start dashboard: cd /home/owner/Documents/cec2ebe8-3579-47fd-8e26-903ffb974f97/repo/diagnostic-dashboard-1786040134 && ./scripts/start.sh
+   - Import a log file: python3 backend/import_diagnostic.py /path/to/logfile <run_id>
+   - Open dashboard: http://localhost:5173
