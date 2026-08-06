@@ -2,13 +2,13 @@
 import os, sys, sqlite3, json, datetime
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
-CORS(app)
 try:
     import flask
 except ImportError:
     print("ERROR: Missing Flask. Run: pip install flask", file=sys.stderr)
     sys.exit(1)
 app = Flask(__name__)
+CORS(app)
 DB_PATH = os.environ.get("DB_PATH", "/data/diagnostics.db")
 assert DB_PATH and DB_PATH.strip(), "DB_PATH missing"
 def get_db():
