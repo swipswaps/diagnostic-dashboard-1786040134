@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import os, sys, sqlite3, json, datetime
 from flask import Flask, request, jsonify, render_template
+from flask_cors import CORS
+CORS(app)
 try:
     import flask
 except ImportError:

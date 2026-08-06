@@ -8,8 +8,13 @@
     <h1>Diagnostic Dashboard</h1>
     <div id="content"><p>Loading data...</p></div>
     <script>
-        fetch('/api/diagnostics')
-            .then(r => r.json())
+        // Point to your Flask backend – change this to your deployed URL later
+        const API_BASE = 'http://localhost:5000';
+        fetch(API_BASE + '/api/diagnostics')
+            .then(response => {
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+                return response.json();
+            })
             .then(data => {
                 let html = '<table><tr><th>ID</th><th>Run</th><th>Component</th><th>Status</th><th>Line</th><th>Logged</th></tr>';
                 data.forEach(row => {
