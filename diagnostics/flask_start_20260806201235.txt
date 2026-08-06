@@ -1,0 +1,13 @@
+Flask started at 2026-08-06T20:12:35Z
+DB_PATH=./diagnostics.db
+PID=1244375
+URL: http://localhost:5000
+
+=== flask.log (first 50 lines) ===
+ * Serving Flask app 'app'
+ * Debug mode: off
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.1.172:5000
+Press CTRL+C to quit
