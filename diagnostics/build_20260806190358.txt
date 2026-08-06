@@ -1,0 +1,1 @@
+{"url":"https://api.github.com/repos/swipswaps/diagnostic-dashboard-1786040134/pages","status":"errored","cname":null,"custom_404":false,"html_url":"https://swipswaps.github.io/diagnostic-dashboard-1786040134/","build_type":"legacy","source":{"branch":"main","path":"/docs"},"public":true,"protected_domain_state":null,"pending_domain_unverified_at":null,"https_enforced":true}
