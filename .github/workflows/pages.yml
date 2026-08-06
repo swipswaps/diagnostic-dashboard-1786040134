@@ -4,7 +4,6 @@ on:
   push:
     branches: [ main ]
 
-# Required for Pages deployment.
 permissions:
   pages: write
   id-token: write
@@ -19,7 +18,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './'   # Upload the entire root – index.html is there.
+          path: './'   # Upload root – index.html and .nojekyll are there.
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
