@@ -1,0 +1,44 @@
+=== FORENSIC DIAGNOSTICS: 2026-08-06T18:22:35Z ===
+Report: /tmp/diagnostic-dashboard-1786040134/diagnostics/pages_forensic_20260806182235.txt
+Owner: swipswaps, Repo: diagnostic-dashboard-1786040134
+
+=== 2. PAGES API STATUS ===
+{"url":"https://api.github.com/repos/swipswaps/diagnostic-dashboard-1786040134/pages","status":"building","cname":null,"custom_404":false,"html_url":"https://swipswaps.github.io/diagnostic-dashboard-1786040134/","build_type":"legacy","source":{"branch":"main","path":"/docs"},"public":true,"protected_domain_state":null,"pending_domain_unverified_at":null,"https_enforced":true}
+=== 3. RECENT PAGES BUILDS ===
+[{"url":"https://api.github.com/repos/swipswaps/diagnostic-dashboard-1786040134/pages/builds/1136198969","status":"building","error":{"message":null},"pusher":{"login":"swipswaps","id":15093666,"node_id":"MDQ6VXNlcjE1MDkzNjY2","avatar_url":"https://avatars.githubusercontent.com/u/15093666?v=4","gravatar_id":"","url":"https://api.github.com/users/swipswaps","html_url":"https://github.com/swipswaps","followers_url":"https://api.github.com/users/swipswaps/followers","following_url":"https://api.github.com/users/swipswaps/following{/other_user}","gists_url":"https://api.github.com/users/swipswaps/gists{/gist_id}","starred_url":"https://api.github.com/users/swipswaps/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/swipswaps/subscriptions","organizations_url":"https://api.github.com/users/swipswaps/orgs","repos_url":"https://api.github.com/users/swipswaps/repos","events_url":"https://api.github.com/users/swipswaps/events{/privacy}","received_events_url":"https://api.github.com/users/swipswaps/received_events","type":"User","user_view_type":"public","site_admin":false},"commit":"199f3a2e0fee591653ba0b76d6a765b820b72966","duration":0,"created_at":"2026-08-06T18:15:40Z","updated_at":"2026-08-06T18:15:40Z"}]
+=== 4. WORKFLOW RUNS (pages.yml) ===
+
+=== 5. DOCS FOLDER CONTENTS ===
+docs/index.html
+docs/static/style.css
+
+=== 6. HTTP RESPONSE HEADERS ===
+HTTP/2 404 
+server: GitHub.com
+content-type: text/html; charset=utf-8
+etag: "6a71231e-239b"
+content-security-policy: default-src 'none'; style-src 'unsafe-inline'; img-src data:; connect-src 'self'
+x-github-request-id: B18C:1378CC:434C729:4811F37:6A74CF49
+x-github-edge-region: iad
+accept-ranges: bytes
+age: 418
+date: Thu, 06 Aug 2026 18:22:38 GMT
+via: 1.1 varnish
+x-served-by: cache-jax2030030-JAX
+x-cache: HIT
+x-cache-hits: 0
+x-timer: S1786040558.074298,VS0,VE1
+vary: Accept-Encoding
+x-fastly-request-id: 1cadb626188e1e7c36b9e3ba491551036993f05c
+content-length: 9115
+
+
+=== 7. REQUESTING A NEW BUILD ===
+{"status":"queued","url":"https://api.github.com/repositories/1325644188/pages/builds/latest"}
+=== 8. CURRENT PAGES SOURCE ===
+{
+  "branch": "main",
+  "path": "/docs"
+}
+
+=== 9. PUSHING DIAGNOSTIC REPORT ===
