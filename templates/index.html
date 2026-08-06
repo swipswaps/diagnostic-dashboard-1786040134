@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Diagnostic Dashboard</title>
+    <link rel="stylesheet" href="static/style.css">
+</head>
+<body>
+    <h1>Diagnostic Dashboard</h1>
+    <div id="content"><p>Loading data...</p></div>
+    <script>
+        // Point to your Flask backend – change this to your deployed URL later
+        const API_BASE = 'http://localhost:5000';
+        fetch(API_BASE + '/api/diagnostics')
+            .then(response => {
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+                return response.json();
+            })
+            .then(data => {
+                let html = '<table><tr><th>ID</th><th>Run</th><th>Component</th><th>Status</th><th>Line</th><th>Logged</th></tr>';
+                data.forEach(row => {
+                    html += `<tr><td>${row.id}</td><td>${row.run_id}</td><td>${row.component}</td><td>${row.status}</td><td>${row.line_number}</td><td>${row.logged_at}</td></tr>`;
+                });
+                html += '</table>';
+                document.getElementById('content').innerHTML = html;
+            })
+            .catch(err => {
+                document.getElementById('content').innerHTML = '<p style="color:red;">Error loading data: ' + err + '</p>';
+            });
+    </script>
+</body>
+</html>
