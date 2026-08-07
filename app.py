@@ -64,6 +64,16 @@ if __name__ == "__main__":
     except Exception as e:
         return jsonify({"db_path": db_path, "error": str(e), "table_exists": False}), 500
 
+    import os, sqlite3, json
+    db_path = os.environ.get("DB_PATH", "not set")
+    try:
+        conn = sqlite3.connect(db_path)
+        count = conn.execute("SELECT COUNT(*) FROM diagnostics").fetchone()[0]
+        conn.close()
+        return jsonify({"db_path": db_path, "count": count})
+    except Exception as e:
+        return jsonify({"db_path": db_path, "error": str(e)}), 500
+
 @app.route("/api/debug")
 def debug():
     import os, sqlite3, json
