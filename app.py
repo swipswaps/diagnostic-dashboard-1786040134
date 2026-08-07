@@ -33,6 +33,17 @@ init_db()
 @app.route("/")
 def index():
     return render_template("index.html")
+@app.route("/api/debug")
+def debug():
+    import os, sqlite3
+    db_path = os.environ.get("DB_PATH", "not set")
+    try:
+        conn = sqlite3.connect(db_path)
+        count = conn.execute("SELECT COUNT(*) FROM diagnostics").fetchone()[0]
+        conn.close()
+        return jsonify({"db_path": db_path, "count": count, "table_exists": True})
+    except Exception as e:
+        return jsonify({"db_path": db_path, "error": str(e), "table_exists": False}), 500
 @app.route("/api/diagnostics")
 def get_diagnostics():
     conn = get_db()
