@@ -1,0 +1,74 @@
+=== FORENSIC DIAGNOSTICS: 2026-08-06T18:20:31Z ===
+Report: /home/owner/Documents/cec2ebe8-3579-47fd-8e26-903ffb974f97/repo/diagnostics/pages_forensic_20260806182031.txt
+[2026-08-06T18:20:32Z] [SUCCESS] repo_discovery: Owner: swipswaps, Repo: 
+
+=== 2. PAGES API STATUS ===
+{
+  "message": "Not Found",
+  "documentation_url": "https://docs.github.com/rest",
+  "status": "404"
+}gh: Not Found (HTTP 404)
+API call failed (maybe Pages not enabled?)
+
+=== 3. RECENT PAGES BUILDS ===
+{
+  "message": "Not Found",
+  "documentation_url": "https://docs.github.com/rest",
+  "status": "404"
+}gh: Not Found (HTTP 404)
+No builds found or API error.
+
+=== 4. WORKFLOW RUNS (pages.yml) ===
+failed to determine base repo: expected the "[HOST/]OWNER/REPO" format, got "swipswaps/"
+No workflow runs found.
+
+=== 5. DOCS FOLDER CONTENTS (from git) ===
+No docs/ folder in main branch.
+
+=== 6. HTTP RESPONSE HEADERS ===
+HTTP/2 404 
+server: GitHub.com
+content-type: text/html; charset=utf-8
+etag: "6a71231e-239b"
+content-security-policy: default-src 'none'; style-src 'unsafe-inline'; img-src data:; connect-src 'self'
+x-github-request-id: CED2:330505:3DBECAB:4254857:6A74D070
+x-github-edge-region: iad
+accept-ranges: bytes
+age: 0
+date: Thu, 06 Aug 2026 18:20:32 GMT
+via: 1.1 varnish
+x-served-by: cache-jax2030035-JAX
+x-cache: MISS
+x-cache-hits: 0
+x-timer: S1786040433.902654,VS0,VE28
+vary: Accept-Encoding
+x-fastly-request-id: f97081ec9a7d55229911b09b6430817c61bafebe
+content-length: 9115
+
+
+=== 7. REQUESTING A NEW BUILD (if Pages is enabled) ===
+{
+  "message": "Not Found",
+  "documentation_url": "https://docs.github.com/rest",
+  "status": "404"
+}gh: Not Found (HTTP 404)
+Build request failed (maybe Pages not enabled).
+
+=== 8. CURRENT PAGES SOURCE CONFIGURATION ===
+null
+
+=== 9. PUSHING DIAGNOSTIC REPORT ===
+fatal: not a git repository (or any parent up to mount point /)
+Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).
+[2026-08-06T18:20:33Z] [FAILURE] git_add_diag: Failed to add /home/owner/Documents/cec2ebe8-3579-47fd-8e26-903ffb974f97/repo/diagnostics/pages_forensic_20260806182031.txt
+fatal: not a git repository (or any parent up to mount point /)
+Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).
+[2026-08-06T18:20:33Z] [FAILURE] git_commit_diag: Commit failed (no changes?)
+fatal: not a git repository (or any parent up to mount point /)
+Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).
+[2026-08-06T18:20:33Z] [FAILURE] git_push_diag: Push failed.
+
+=== RAW LOG LINK ===
+https://raw.githubusercontent.com/swipswaps//main/diagnostics/pages_forensic_20260806182031.txt
+[2026-08-06T18:20:33Z] [SUCCESS] diagnosis_complete: Report pushed. Raw link: https://raw.githubusercontent.com/swipswaps//main/diagnostics/pages_forensic_20260806182031.txt
+=== DIAGNOSTICS COMPLETE ===
